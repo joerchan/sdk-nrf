@@ -310,8 +310,33 @@ void host_signal(void)
 	k_sem_give(&sem_recv);
 }
 
-void SIGNALLING_Handler(void)
+#if defined CONFIG_DYNAMIC_INTERRUPTS
+static inline void RADIO_Handler(void *param)
 {
+	ARG_UNUSED(param);
+
+	ble_controller_RADIO_IRQHandler();
+}
+
+static inline void TIMER0_Handler(void *param)
+{
+	ARG_UNUSED(param);
+
+	ble_controller_TIMER0_IRQHandler();
+}
+
+static inline void RTC0_Handler(void *param)
+{
+	ARG_UNUSED(param);
+
+	ble_controller_RTC0_IRQHandler();
+}
+#endif
+
+void SIGNALLING_Handler(void *param)
+{
+	ARG_UNUSED(param);
+
 	k_sem_give(&sem_signal);
 }
 
@@ -339,6 +364,42 @@ static int ble_init(struct device *unused)
 {
 	int err = 0;
 	nrf_lf_clock_cfg_t clock_cfg;
+
+	if (IS_ENABLED(CONFIG_DYNAMIC_INTERRUPTS)) {
+		IRQ_DIRECT_DYNAMIC(RADIO_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   IRQ_ZERO_LATENCY);
+
+		IRQ_DIRECT_DYNAMIC(RTC0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   IRQ_ZERO_LATENCY);
+
+		IRQ_DIRECT_DYNAMIC(TIMER0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   IRQ_ZERO_LATENCY);
+
+		irq_connect_dynamic(RADIO_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				    RADIO_Handler, NULL, IRQ_ZERO_LATENCY);
+
+		irq_connect_dynamic(RTC0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				    RTC0_Handler, NULL, IRQ_ZERO_LATENCY);
+
+		irq_connect_dynamic(TIMER0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				    TIMER0_Handler, NULL, IRQ_ZERO_LATENCY);
+
+		irq_connect_dynamic(SWI5_IRQn, BLE_CONTROLLER_IRQ_PRIO_LOW,
+				    SIGNALLING_Handler, NULL, 0);
+	} else {
+		IRQ_DIRECT_CONNECT(RADIO_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   ble_controller_RADIO_IRQHandler,
+				   IRQ_ZERO_LATENCY);
+		IRQ_DIRECT_CONNECT(RTC0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   ble_controller_RTC0_IRQHandler,
+				   IRQ_ZERO_LATENCY);
+		IRQ_DIRECT_CONNECT(TIMER0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
+				   ble_controller_TIMER0_IRQHandler,
+				   IRQ_ZERO_LATENCY);
+
+		IRQ_CONNECT(SWI5_IRQn, BLE_CONTROLLER_IRQ_PRIO_LOW,
+			    SIGNALLING_Handler, NULL, 0);
+	}
 
 #ifdef CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC
 	clock_cfg.lf_clk_source = NRF_LF_CLOCK_SRC_RC;
@@ -484,17 +545,6 @@ static int hci_driver_init(struct device *unused)
 	if (err < 0) {
 		return err;
 	}
-
-	IRQ_DIRECT_CONNECT(RADIO_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
-			   ble_controller_RADIO_IRQHandler, IRQ_ZERO_LATENCY);
-	IRQ_DIRECT_CONNECT(RTC0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
-			   ble_controller_RTC0_IRQHandler, IRQ_ZERO_LATENCY);
-	IRQ_DIRECT_CONNECT(TIMER0_IRQn, BLE_CONTROLLER_IRQ_PRIO_HIGH,
-			   ble_controller_TIMER0_IRQHandler, IRQ_ZERO_LATENCY);
-
-	IRQ_CONNECT(SWI5_IRQn, BLE_CONTROLLER_IRQ_PRIO_LOW,
-		    SIGNALLING_Handler, NULL, 0);
-
 
 	return 0;
 }
