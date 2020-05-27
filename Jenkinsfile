@@ -141,16 +141,19 @@ pipeline {
       println "TestExecutionList = $TestExecutionList"
 
     }}}
-
-    stage('Execution') { steps { script {
-      parallel TestExecutionList
-      lib_Status.set("${currentBuild.currentResult}",  'NRF', CI_STATE)
-    }}}
-
-    stage('Trigger Downstream Jobs') {
-      when { expression { CI_STATE.SELF.RUN_DOWNSTREAM } }
-      steps { script { lib_Stage.runDownstream(JOB_NAME, CI_STATE) } }
-    }
+    stage('Execution') { parallel {
+      stage('Execution') { steps { script {
+        parallel TestExecutionList
+        lib_Status.set("${currentBuild.currentResult}",  'NRF', CI_STATE)
+      }}}
+      stage('Trigger Downstream Jobs') {
+        when { expression { CI_STATE.SELF.RUN_DOWNSTREAM } }
+        steps { script {
+          echo "Running Downstream"
+          lib_Stage.runDownstream(JOB_NAME, CI_STATE)
+        } }
+      }
+    } }
 
     stage('Report') {
       when { expression { CI_STATE.SELF.RUN_TESTS } }
