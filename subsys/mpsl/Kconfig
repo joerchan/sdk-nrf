@@ -14,7 +14,7 @@ config MPSL_THREAD_COOP_PRIO
 
 config MPSL_SIGNAL_STACK_SIZE
 	int "Size of the signal handler thread stack"
-	default 1024
+	default 2048
 	help
 	  Size of the signal handler thread stack, used to process lower
 	  priority signals in MPSL.

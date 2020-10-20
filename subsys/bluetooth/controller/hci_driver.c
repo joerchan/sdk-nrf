@@ -20,14 +20,16 @@
 #include "multithreading_lock.h"
 #include "hci_internal.h"
 
-#define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
+#define BT_DBG_ENABLED 1//IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME sdc_hci_driver
 #include "common/log.h"
 
+#if 0
 static K_SEM_DEFINE(sem_recv, 0, 1);
 
 static struct k_thread recv_thread_data;
 static K_THREAD_STACK_DEFINE(recv_thread_stack, CONFIG_SDC_RX_STACK_SIZE);
+#endif
 
 #if defined(CONFIG_BT_CONN)
 /* It should not be possible to set CONFIG_SDC_SLAVE_COUNT larger than
@@ -93,6 +95,16 @@ void sdc_assertion_handler(const char *const file, const uint32_t line)
 }
 #endif /* IS_ENABLED(CONFIG_BT_CTLR_ASSERT_HANDLER) */
 
+void mpsl_signal_raise(void);
+static inline void receive_signal_raise(void)
+{
+#if 0
+	k_sem_give(&sem_recv);
+#else
+	BT_WARN("raise signal");
+	mpsl_signal_raise();
+#endif
+}
 
 static int cmd_handle(struct net_buf *cmd)
 {
@@ -108,7 +120,7 @@ static int cmd_handle(struct net_buf *cmd)
 		return errcode;
 	}
 
-	k_sem_give(&sem_recv);
+	receive_signal_raise();
 
 	return 0;
 }
@@ -126,7 +138,7 @@ static int acl_handle(struct net_buf *acl)
 
 		if (errcode) {
 			/* Likely buffer overflow event */
-			k_sem_give(&sem_recv);
+			receive_signal_raise();
 		}
 	}
 
@@ -256,8 +268,10 @@ static void event_packet_process(uint8_t *hci_buf)
 		BT_DBG("Event (0x%02x) len %u", hdr->evt, hdr->len);
 	}
 
+	BT_WARN("Get buf");
 	evt_buf = bt_buf_get_evt(hdr->evt, discardable,
 				 discardable ? K_NO_WAIT : K_FOREVER);
+	BT_WARN("Got buf");
 
 	if (!evt_buf) {
 		if (discardable) {
@@ -277,9 +291,12 @@ static bool fetch_and_process_hci_evt(uint8_t *p_hci_buffer)
 {
 	int errcode;
 
+	BT_WARN("evt get");
 	errcode = MULTITHREADING_LOCK_ACQUIRE();
 	if (!errcode) {
+		BT_WARN("internal evt get");
 		errcode = hci_internal_evt_get(p_hci_buffer);
+		BT_WARN("internal evt get done");
 		MULTITHREADING_LOCK_RELEASE();
 	}
 
@@ -287,7 +304,9 @@ static bool fetch_and_process_hci_evt(uint8_t *p_hci_buffer)
 		return false;
 	}
 
+	BT_WARN("event process");
 	event_packet_process(p_hci_buffer);
+	BT_WARN("event processed");
 	return true;
 }
 
@@ -309,12 +328,9 @@ static bool fetch_and_process_acl_data(uint8_t *p_hci_buffer)
 	return true;
 }
 
-static void recv_thread(void *p1, void *p2, void *p3)
+#if 0
+void hci_driver_receive_process(void)
 {
-	ARG_UNUSED(p1);
-	ARG_UNUSED(p2);
-	ARG_UNUSED(p3);
-
 	static uint8_t hci_buffer[HCI_MSG_BUFFER_MAX_SIZE];
 
 	bool received_evt = false;
@@ -323,7 +339,8 @@ static void recv_thread(void *p1, void *p2, void *p3)
 	while (true) {
 		if (!received_evt && !received_data) {
 			/* Wait for a signal from the controller. */
-			k_sem_take(&sem_recv, K_FOREVER);
+			BT_WARN("Wait for signal");
+			return;
 		}
 
 		received_evt = fetch_and_process_hci_evt(&hci_buffer[0]);
@@ -336,22 +353,70 @@ static void recv_thread(void *p1, void *p2, void *p3)
 		k_yield();
 	}
 }
+#endif
+#if 1
+void hci_driver_receive_process(void)
+{
+	static uint8_t hci_buffer[HCI_MSG_BUFFER_MAX_SIZE];
+	bool received_data = false;
+	bool received_evt;
+
+	do {
+		received_evt = fetch_and_process_hci_evt(&hci_buffer[0]);
+
+		if (IS_ENABLED(CONFIG_BT_CONN)) {
+			received_data = fetch_and_process_acl_data(&hci_buffer[0]);
+		}
+	} while (received_evt || received_data);
+
+}
+
+void hci_driver_signal(void)
+{
+	// TODO: evaluate stack usage of the two
+#if 0
+	// TODO: figure out if this can work
+	receive_signal_raise();
+#else
+	BT_WARN("Received signal");
+	hci_driver_receive_process();
+	BT_WARN("receive processed");
+#endif
+}
+#endif
+
+#if 0
+static void recv_thread(void *p1, void *p2, void *p3)
+{
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (true) {
+		k_sem_take(&sem_recv, K_FOREVER);
+		hci_driver_receive_process();
+	}
+}
 
 void host_signal(void)
 {
 	/* Wake up the RX event/data thread */
 	k_sem_give(&sem_recv);
 }
+#endif
+
 
 static int hci_driver_open(void)
 {
 	BT_DBG("Open");
 
+#if 0
 	k_thread_create(&recv_thread_data, recv_thread_stack,
 			K_THREAD_STACK_SIZEOF(recv_thread_stack), recv_thread,
 			NULL, NULL, NULL, K_PRIO_COOP(CONFIG_SDC_RX_PRIO), 0,
 			K_NO_WAIT);
 	k_thread_name_set(&recv_thread_data, "blectlr recv");
+#endif
 
 	uint8_t build_revision[SDC_BUILD_REVISION_SIZE];
 
@@ -469,7 +534,7 @@ static int hci_driver_open(void)
 
 	err = MULTITHREADING_LOCK_ACQUIRE();
 	if (!err) {
-		err = sdc_enable(host_signal, sdc_mempool);
+		err = sdc_enable(hci_driver_signal, sdc_mempool);
 		MULTITHREADING_LOCK_RELEASE();
 	}
 	if (err < 0) {
@@ -518,7 +583,7 @@ uint8_t bt_read_static_addr(struct bt_hci_vs_static_addr addrs[], uint8_t size)
 			sys_put_le32(NRF_FICR->IR[3], &addrs[0].ir[12]);
 		} else {
 			/* Mark IR as invalid */
-			(void)memset(addrs[0].ir, 0x00, sizeof(addrs[0].ir));
+			(void)memset(addrs[0].ir, 0x00, sizeof(addrs[0].ir));host
 		}
 
 		return 1;

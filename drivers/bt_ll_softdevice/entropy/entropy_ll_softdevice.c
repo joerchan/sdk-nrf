@@ -73,16 +73,16 @@ static int rng_driver_get_entropy_isr(const struct device *dev, uint8_t *buf, ui
 	int errcode = 0;
 
 	if (likely((flags & ENTROPY_BUSYWAIT) == 0)) {
-		errcode = MULTITHREADING_LOCK_ACQUIRE_NO_WAIT();
+		// errcode = MULTITHREADING_LOCK_ACQUIRE_NO_WAIT();
 		if (!errcode) {
 			errcode = sdc_soc_rand_vector_poll(buf, len);
-			MULTITHREADING_LOCK_RELEASE();
+			// MULTITHREADING_LOCK_RELEASE();
 		}
 	} else {
-		errcode = MULTITHREADING_LOCK_ACQUIRE_FOREVER_WAIT();
+		// errcode = MULTITHREADING_LOCK_ACQUIRE_FOREVER_WAIT();
 		if (!errcode) {
 			sdc_soc_rand_vector_get(buf, len);
-			MULTITHREADING_LOCK_RELEASE();
+			// MULTITHREADING_LOCK_RELEASE();
 		}
 	}
 

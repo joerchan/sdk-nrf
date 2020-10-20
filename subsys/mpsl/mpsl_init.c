@@ -45,6 +45,24 @@ static void mpsl_low_prio_irq_handler(void)
 	k_sem_give(&sem_signal);
 }
 
+static struct k_poll_signal mpsl_signal;
+#if 1
+void mpsl_signal_raise(void)
+{
+	k_poll_signal_raise(&mpsl_signal, 0);
+}
+#endif
+
+#if 0
+void mpsl_signal_raise(void)
+{
+
+}
+#endif
+
+void hci_driver_receive_process(void);
+void hci_driver_signal(void);
+
 static void signal_thread(void *p1, void *p2, void *p3)
 {
 	ARG_UNUSED(p1);
@@ -53,13 +71,35 @@ static void signal_thread(void *p1, void *p2, void *p3)
 
 	int errcode;
 
-	while (true) {
-		k_sem_take(&sem_signal, K_FOREVER);
+	k_poll_signal_init(&mpsl_signal);
 
-		errcode = MULTITHREADING_LOCK_ACQUIRE();
-		__ASSERT_NO_MSG(errcode == 0);
-		mpsl_low_priority_process();
-		MULTITHREADING_LOCK_RELEASE();
+	struct k_poll_event events[2] = {
+		K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SEM_AVAILABLE,
+					 K_POLL_MODE_NOTIFY_ONLY,
+					 &sem_signal),
+		K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL,
+					 K_POLL_MODE_NOTIFY_ONLY,
+					 &mpsl_signal),
+	};
+
+	while (true) {
+		k_poll(events, ARRAY_SIZE(events), K_FOREVER);
+
+		if (events[0].state == K_POLL_STATE_SEM_AVAILABLE) {
+			errcode = MULTITHREADING_LOCK_ACQUIRE();
+			__ASSERT_NO_MSG(errcode == 0);
+			mpsl_low_priority_process();
+			MULTITHREADING_LOCK_RELEASE();
+
+			k_sem_take(events[0].sem, K_NO_WAIT);
+        		events[0].state = K_POLL_STATE_NOT_READY;
+		}
+
+		if (events[1].state == K_POLL_STATE_SIGNALED) {
+			hci_driver_signal();
+			events[1].signal->signaled = 0;
+			events[1].state = K_POLL_STATE_NOT_READY;
+		}
 	}
 }
 
