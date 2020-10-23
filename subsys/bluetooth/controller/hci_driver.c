@@ -19,6 +19,7 @@
 #include <sdc_hci_vs.h>
 #include "multithreading_lock.h"
 #include "hci_internal.h"
+#include "ecdh.h"
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME sdc_hci_driver
@@ -352,6 +353,10 @@ static int hci_driver_open(void)
 			NULL, NULL, NULL, K_PRIO_COOP(CONFIG_SDC_RX_PRIO), 0,
 			K_NO_WAIT);
 	k_thread_name_set(&recv_thread_data, "SDC RX");
+
+	if (IS_ENABLED(CONFIG_BT_CTLR_ECDH)) {
+		hci_ecdh_init();
+	}
 
 	uint8_t build_revision[SDC_BUILD_REVISION_SIZE];
 

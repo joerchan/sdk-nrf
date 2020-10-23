@@ -33,6 +33,8 @@ manifest:
       url-base: https://github.com/nanopb
     - name: alexa
       url-base: https://github.com/alexa
+    - name: joerchan
+      url-base: https://github.com/joerchan
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -49,8 +51,9 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/introduction/index.html
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
-      repo-path: sdk-zephyr
-      revision: 41ce8e165a9af4171ef52a73aede89da6ce60920
+      remote: joerchan
+      repo-path: fw-nrfconnect-zephyr
+      revision: bt-ecdh-backport
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -99,9 +102,10 @@ manifest:
       revision: v0.1.0-ncs1-rc1
       path: modules/lib/mcumgr
     - name: nrfxlib
-      repo-path: sdk-nrfxlib
+      repo-path: nrfxlib
       path: nrfxlib
-      revision: 9dbc0e786924ea1e42e6f732d0d19a58265f4559
+      remote: joerchan
+      revision: bt-ctlr-ecdh
     # Other third-party repositories.
     - name: cmock
       path: test/cmock
