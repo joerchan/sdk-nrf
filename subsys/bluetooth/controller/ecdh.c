@@ -168,7 +168,12 @@ static struct net_buf *ecdh_p256_public_key(void)
 	struct net_buf *buf;
 	uint8_t status;
 
+	int64_t uptime, delta;
+	uptime = k_uptime_get();
+
 	status = public_key();
+	delta = k_uptime_delta(&uptime);
+	BT_WARN("public key %d ms\n", (int32_t)delta);
 
 	buf = bt_buf_get_rx(BT_BUF_EVT, K_FOREVER);
 
@@ -202,7 +207,12 @@ static struct net_buf *ecdh_p256_common_secret(void)
 	struct net_buf *buf;
 	uint8_t status;
 
+	int64_t uptime, delta;
+	uptime = k_uptime_get();
+
 	status = common_secret();
+	delta = k_uptime_delta(&uptime);
+	BT_WARN("common secret %d ms\n", (int32_t)delta);
 
 	buf = bt_buf_get_rx(BT_BUF_EVT, K_FOREVER);
 
