@@ -13,8 +13,10 @@
 #define LOG_MODULE_NAME bt_ecdh
 #include "common/log.h"
 
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 static struct k_thread ecdh_thread_data;
 static K_KERNEL_STACK_DEFINE(ecdh_thread_stack, CONFIG_BT_CTLR_ECDH_STACK_SIZE);
+#endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 
 static struct {
 	uint8_t private_key_be[32];
@@ -251,6 +253,7 @@ void ecdh_signal_handle(struct k_poll_event *event)
 	}
 }
 
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 static void ecdh_thread(void *p1, void *p2, void *p3)
 {
 	struct k_poll_event events[1] = {
@@ -264,15 +267,18 @@ static void ecdh_thread(void *p1, void *p2, void *p3)
 		ecdh_signal_handle(&events[0]);
 	}
 }
+#endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 
 void hci_ecdh_init(void)
 {
 	k_poll_signal_init(&ecdh_signal);
 
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 	k_thread_create(&ecdh_thread_data, ecdh_thread_stack,
 			K_KERNEL_STACK_SIZEOF(ecdh_thread_stack), ecdh_thread,
 			NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, K_NO_WAIT);
 	k_thread_name_set(&ecdh_thread_data, "BT CTLR ECDH");
+#endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 }
 
 uint8_t hci_cmd_le_read_local_p256_public_key(void)

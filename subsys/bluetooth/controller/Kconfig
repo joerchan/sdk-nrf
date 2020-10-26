@@ -111,6 +111,14 @@ config BT_CTLR_ECDH_STACK_SIZE
 	  NOTE: This is an advanced setting and should not be changed unless
 	  absolutely necessary
 
+config BT_CTLR_ECDH_IN_MPSL_SIGNAL
+	bool "ECDH processing in MPSL signal handler"
+	depends on BT_CTLR_ECDH_LIB_OBERON
+	help
+	  Run the ECDH processing in the MPSL signal handler instead of in a
+	  a dedicated pre-emptible thread.
+	  This saves RAM at the cost of delaying MPSL signals.
+
 endif # BT_CTLR_ECDH
 
 endmenu

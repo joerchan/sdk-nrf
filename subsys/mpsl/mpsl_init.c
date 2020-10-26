@@ -57,7 +57,8 @@ static void mpsl_low_prio_irq_handler(void)
 
 static struct k_poll_signal mpsl_signal;
 
-#if 0
+extern struct k_poll_signal ecdh_signal;
+
 void mpsl_signal_raise(void)
 {
 	k_poll_signal_raise(&mpsl_signal, 0);
@@ -65,6 +66,7 @@ void mpsl_signal_raise(void)
 
 // TODO: figure out interface for this
 void hci_driver_signal(void);
+void ecdh_signal_handle(struct k_poll_event *event);
 
 static void signal_thread(void *p1, void *p2, void *p3)
 {
@@ -83,6 +85,11 @@ static void signal_thread(void *p1, void *p2, void *p3)
 		K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL,
 					 K_POLL_MODE_NOTIFY_ONLY,
 					 &mpsl_signal),
+#ifdef CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL
+		K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL,
+					 K_POLL_MODE_NOTIFY_ONLY,
+					 &ecdh_signal),
+#endif
 	};
 
 	while (true) {
@@ -103,6 +110,12 @@ static void signal_thread(void *p1, void *p2, void *p3)
 			events[1].signal->signaled = 0;
 			events[1].state = K_POLL_STATE_NOT_READY;
 		}
+
+#ifdef CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL
+		if (events[2].state == K_POLL_STATE_SIGNALED) {
+			ecdh_signal_handle(&events[2]);
+		}
+#endif /* CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL */
 	}
 }
 
