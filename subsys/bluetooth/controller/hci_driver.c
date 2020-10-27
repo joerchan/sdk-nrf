@@ -57,11 +57,6 @@ const uint32_t z_bt_ctlr_used_nrf_ppi_channels =
 	PPI_CHANNELS_USED_BY_CTLR | PPI_CHANNELS_USED_BY_MPSL;
 const uint32_t z_bt_ctlr_used_nrf_ppi_groups;
 
-static K_SEM_DEFINE(sem_recv, 0, 1);
-
-static struct k_thread recv_thread_data;
-static K_THREAD_STACK_DEFINE(recv_thread_stack, CONFIG_SDC_RX_STACK_SIZE);
-
 #if defined(CONFIG_BT_CONN)
 /* It should not be possible to set CONFIG_SDC_SLAVE_COUNT larger than
  * CONFIG_BT_MAX_CONN. Kconfig should make sure of that, this assert is to
@@ -126,6 +121,12 @@ void sdc_assertion_handler(const char *const file, const uint32_t line)
 }
 #endif /* IS_ENABLED(CONFIG_BT_CTLR_ASSERT_HANDLER) */
 
+// Todo: figure out interface for signals
+void mpsl_signal_raise(void);
+static inline void receive_signal_raise(void)
+{
+	mpsl_signal_raise();
+}
 
 static int cmd_handle(struct net_buf *cmd)
 {
@@ -141,7 +142,7 @@ static int cmd_handle(struct net_buf *cmd)
 		return errcode;
 	}
 
-	k_sem_give(&sem_recv);
+	receive_signal_raise();
 
 	return 0;
 }
@@ -159,7 +160,7 @@ static int acl_handle(struct net_buf *acl)
 
 		if (errcode) {
 			/* Likely buffer overflow event */
-			k_sem_give(&sem_recv);
+			receive_signal_raise();
 		}
 	}
 
@@ -342,38 +343,30 @@ static bool fetch_and_process_acl_data(uint8_t *p_hci_buffer)
 	return true;
 }
 
-static void recv_thread(void *p1, void *p2, void *p3)
+void hci_driver_receive_process(void)
 {
-	ARG_UNUSED(p1);
-	ARG_UNUSED(p2);
-	ARG_UNUSED(p3);
-
-	static uint8_t hci_buffer[CONFIG_BT_RX_BUF_LEN];
-
-	bool received_evt = false;
+	static uint8_t hci_buf[CONFIG_BT_RX_BUF_LEN];
 	bool received_data = false;
+	bool received_evt;
 
-	while (true) {
-		if (!received_evt && !received_data) {
-			/* Wait for a signal from the controller. */
-			k_sem_take(&sem_recv, K_FOREVER);
-		}
-
-		received_evt = fetch_and_process_hci_evt(&hci_buffer[0]);
+	do {
+		received_evt = fetch_and_process_hci_evt(&hci_buf[0]);
 
 		if (IS_ENABLED(CONFIG_BT_CONN)) {
-			received_data = fetch_and_process_acl_data(&hci_buffer[0]);
+			received_data = fetch_and_process_acl_data(&hci_buf[0]);
 		}
-
-		/* Let other threads of same priority run in between. */
-		k_yield();
-	}
+	} while (received_evt || received_data);
 }
 
-void host_signal(void)
+void hci_driver_signal(void)
 {
-	/* Wake up the RX event/data thread */
-	k_sem_give(&sem_recv);
+	// TODO: evaluate stack usage of the two
+#if 0
+	// TODO: figure out if this can work
+	receive_signal_raise();
+#else
+	hci_driver_receive_process();
+#endif
 }
 
 
@@ -406,12 +399,6 @@ static void rand_prio_low_vector_get_blocking(uint8_t *p_buff, uint8_t length)
 static int hci_driver_open(void)
 {
 	BT_DBG("Open");
-
-	k_thread_create(&recv_thread_data, recv_thread_stack,
-			K_THREAD_STACK_SIZEOF(recv_thread_stack), recv_thread,
-			NULL, NULL, NULL, K_PRIO_COOP(CONFIG_SDC_RX_PRIO), 0,
-			K_NO_WAIT);
-	k_thread_name_set(&recv_thread_data, "SDC RX");
 
 	if (IS_ENABLED(CONFIG_BT_CTLR_ECDH)) {
 		hci_ecdh_init();
@@ -565,7 +552,7 @@ static int hci_driver_open(void)
 
 	err = MULTITHREADING_LOCK_ACQUIRE();
 	if (!err) {
-		err = sdc_enable(host_signal, sdc_mempool);
+		err = sdc_enable(hci_driver_signal, sdc_mempool);
 		MULTITHREADING_LOCK_RELEASE();
 	}
 	if (err < 0) {
