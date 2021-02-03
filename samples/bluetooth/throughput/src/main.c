@@ -25,6 +25,8 @@
 
 #include <dk_buttons_and_leds.h>
 
+#include "main.h"
+
 #define DEVICE_NAME	CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 #define INTERVAL_MIN	0x140	/* 320 units, 400 ms */
@@ -247,7 +249,7 @@ static void scan_init(void)
 	}
 }
 
-static void scan_start(void)
+void scan_start(void)
 {
 	int err;
 
@@ -256,9 +258,11 @@ static void scan_start(void)
 		printk("Starting scanning failed (err %d)\n", err);
 		return;
 	}
+
+	printk("Started scanning\n");
 }
 
-static void adv_start(void)
+void adv_start(void)
 {
 	struct bt_le_adv_param *adv_param =
 		BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE |
@@ -274,6 +278,8 @@ static void adv_start(void)
 		printk("Failed to start advertiser (%d)\n", err);
 		return;
 	}
+
+	printk("Started advertiser\n");
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
