@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
+#include <kernel.h>
 #include <drivers/entropy.h>
 #include <drivers/bluetooth/hci_driver.h>
 #include <bluetooth/controller.h>
@@ -123,9 +124,11 @@ void sdc_assertion_handler(const char *const file, const uint32_t line)
 
 // Todo: figure out interface for signals
 void mpsl_signal_raise(void);
+static struct k_work receive_work;
 static inline void receive_signal_raise(void)
 {
-	mpsl_signal_raise();
+	// mpsl_signal_raise();
+	mpsl_work_submit(&receive_work);
 }
 
 static int cmd_handle(struct net_buf *cmd)
@@ -358,6 +361,13 @@ void hci_driver_receive_process(void)
 	} while (received_evt || received_data);
 }
 
+static void receive_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	hci_driver_receive_process();
+}
+
 void hci_driver_signal(void)
 {
 	// TODO: evaluate stack usage of the two
@@ -549,6 +559,8 @@ static int hci_driver_open(void)
 			return -ENOTSUP;
 		}
 	}
+
+	k_work_init(&receive_work, receive_work_handler);
 
 	err = MULTITHREADING_LOCK_ACQUIRE();
 	if (!err) {

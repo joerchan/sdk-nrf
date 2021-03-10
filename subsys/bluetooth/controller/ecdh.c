@@ -1,4 +1,5 @@
 #include <zephyr.h>
+#include <sys/atomic.h>
 
 #include <sys/byteorder.h>
 
@@ -8,15 +9,12 @@
 #include <drivers/bluetooth/hci_driver.h>
 
 #include "ecdh.h"
+#include "multithreading_lock.h"
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
 #define LOG_MODULE_NAME bt_ecdh
 #include "common/log.h"
 
-#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
-static struct k_thread ecdh_thread_data;
-static K_KERNEL_STACK_DEFINE(ecdh_thread_stack, CONFIG_BT_CTLR_ECDH_STACK_SIZE);
-#endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 
 static struct {
 	uint8_t private_key_be[32];
@@ -28,10 +26,12 @@ static struct {
 } ecdh;
 
 enum {
-	GEN_PUBLIC_KEY,
-	GEN_DHKEY,
-	GEN_DHKEY_DEBUG,
+	GEN_PUBLIC_KEY  = BIT(0),
+	GEN_DHKEY       = BIT(1),
+	GEN_DHKEY_DEBUG = BIT(2),
+
 };
+atomic_t cmd;
 
 /* based on Core Specification 4.2 Vol 3. Part H 2.3.5.6.1 */
 static const uint8_t debug_private_key_be[32] = {
@@ -224,12 +224,35 @@ static struct net_buf *ecdh_p256_common_secret(bool use_debug)
 	return buf;
 }
 
+
+#if defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
+static struct k_work ecdh_work;
+
+static void work_submit(void)
+{
+	mpsl_work_submit(&ecdh_work);
+}
+#else
 struct k_poll_signal ecdh_signal;
-void ecdh_signal_handle(struct k_poll_event *event)
+
+static struct k_thread ecdh_thread_data;
+static K_KERNEL_STACK_DEFINE(ecdh_thread_stack, CONFIG_BT_CTLR_ECDH_STACK_SIZE);
+
+static void work_submit(void)
+{
+	k_poll_signal_raise(&ecdh_signal, 0);
+}
+#endif
+
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
+void ecdh_work_handler(struct k_poll_event *event)
+#else
+void ecdh_work_handler(struct k_work *work)
+#endif
 {
 	struct net_buf *buf;
 
-	switch (event->signal->result) {
+	switch (atomic_get(&cmd)) {
 	case GEN_PUBLIC_KEY:
 		buf = ecdh_p256_public_key();
 		break;
@@ -240,13 +263,18 @@ void ecdh_signal_handle(struct k_poll_event *event)
 		buf = ecdh_p256_common_secret(true);
 		break;
 	default:
-		BT_WARN("Unknown HCI command 0x%04x", event->signal->result);
+		BT_WARN("Unknown command");
 		buf = NULL;
 		break;
 	}
 
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 	event->signal->signaled = 0;
 	event->state = K_POLL_STATE_NOT_READY;
+#else
+	ARG_UNUSED(work);
+#endif
+	atomic_set(&cmd, 0);
 
 	if (buf) {
 		bt_recv(buf);
@@ -264,55 +292,46 @@ static void ecdh_thread(void *p1, void *p2, void *p3)
 
 	while (true) {
 		k_poll(events, 1, K_FOREVER);
-		ecdh_signal_handle(&events[0]);
+		ecdh_work_handler(&events[0]);
 	}
 }
 #endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 
 void hci_ecdh_init(void)
 {
+#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 	k_poll_signal_init(&ecdh_signal);
 
-#if !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL)
 	k_thread_create(&ecdh_thread_data, ecdh_thread_stack,
 			K_KERNEL_STACK_SIZEOF(ecdh_thread_stack), ecdh_thread,
 			NULL, NULL, NULL, K_PRIO_PREEMPT(10), 0, K_NO_WAIT);
 	k_thread_name_set(&ecdh_thread_data, "BT CTLR ECDH");
+#else
+	k_work_init(&ecdh_work, ecdh_work_handler);
 #endif /* !defined(CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL) */
 }
 
 uint8_t hci_cmd_le_read_local_p256_public_key(void)
 {
-	unsigned int signaled;
-	int result;
-
-	k_poll_signal_check(&ecdh_signal, &signaled, &result);
-
-	if (signaled) {
+	if (!atomic_cas(&cmd, 0, GEN_PUBLIC_KEY)) {
 		return BT_HCI_ERR_CMD_DISALLOWED;
 	}
 
-	k_poll_signal_raise(&ecdh_signal, GEN_PUBLIC_KEY);
+	work_submit();
 
 	return 0;
 }
 
 uint8_t cmd_le_generate_dhkey(uint8_t *key, uint8_t key_type)
 {
-	unsigned int signaled;
-	int result;
-
-	k_poll_signal_check(&ecdh_signal, &signaled, &result);
-
-	if (signaled) {
+	if (!atomic_cas(&cmd, 0, key_type ? GEN_DHKEY_DEBUG : GEN_DHKEY)) {
 		return BT_HCI_ERR_CMD_DISALLOWED;
 	}
 
 	sys_memcpy_swap(&ecdh.public_key_be[0], &key[0], 32);
 	sys_memcpy_swap(&ecdh.public_key_be[32], &key[32], 32);
 
-	k_poll_signal_raise(&ecdh_signal, key_type ? GEN_DHKEY_DEBUG :
-						     GEN_DHKEY);
+	work_submit();
 
 	return 0;
 }

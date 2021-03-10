@@ -54,6 +54,15 @@ int multithreading_lock_acquire(k_timeout_t timeout);
  */
 void multithreading_lock_release(void);
 
+extern struct k_work_q mpsl_work_q;
+static inline int mpsl_work_submit(struct k_work *work)
+{
+	// TODO: return value after upmerge
+	k_work_submit_to_queue(&mpsl_work_q, work);
+	return 0;
+}
+
+
 #ifdef __cplusplus
 }
 #endif

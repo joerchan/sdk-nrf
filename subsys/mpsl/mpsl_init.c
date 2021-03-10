@@ -32,10 +32,9 @@ const uint32_t z_mpsl_used_nrf_ppi_groups;
 #endif
 #define MPSL_LOW_PRIO (4)
 
-static K_SEM_DEFINE(sem_signal, 0, UINT_MAX);
-static struct k_thread signal_thread_data;
-static K_THREAD_STACK_DEFINE(signal_thread_stack,
-			     CONFIG_MPSL_SIGNAL_STACK_SIZE);
+static struct k_work mpsl_low_prio_work;
+struct k_work_q mpsl_work_q;
+static K_THREAD_STACK_DEFINE(mpsl_work_stack, CONFIG_MPSL_SIGNAL_STACK_SIZE);
 
 #define MPSL_TIMESLOT_SESSION_COUNT (\
 	CONFIG_MPSL_TIMESLOT_SESSION_COUNT + \
@@ -50,6 +49,19 @@ BUILD_ASSERT(MPSL_TIMESLOT_SESSION_COUNT <= MPSL_TIMESLOT_CONTEXT_COUNT_MAX,
 static uint8_t __aligned(4) timeslot_context[TIMESLOT_MEM_SIZE];
 #endif
 
+static void mpsl_low_prio_irq_handler(void)
+{
+	k_work_submit_to_queue(&mpsl_work_q, &mpsl_low_prio_work);
+}
+
+static void mpsl_low_prio_work_handler(struct k_work *item)
+{
+	ARG_UNUSED(item);
+
+	mpsl_low_priority_process();
+}
+
+#if 0
 static void mpsl_low_prio_irq_handler(void)
 {
 	k_sem_give(&sem_signal);
@@ -118,6 +130,7 @@ static void signal_thread(void *p1, void *p2, void *p3)
 #endif /* CONFIG_BT_CTLR_ECDH_IN_MPSL_SIGNAL */
 	}
 }
+#endif /* 0 */
 
 ISR_DIRECT_DECLARE(mpsl_timer0_isr_wrapper)
 {
@@ -253,16 +266,15 @@ static int mpsl_lib_init(const struct device *dev)
 	return 0;
 }
 
-static int mpsl_signal_thread_init(const struct device *dev)
+static int mpsl_work_init(const struct device *dev)
 {
 	ARG_UNUSED(dev);
 
-	k_thread_create(&signal_thread_data, signal_thread_stack,
-			K_THREAD_STACK_SIZEOF(signal_thread_stack),
-			signal_thread, NULL, NULL, NULL,
-			K_PRIO_COOP(CONFIG_MPSL_THREAD_COOP_PRIO),
-			0, K_NO_WAIT);
-	k_thread_name_set(&signal_thread_data, "MPSL signal");
+	k_work_q_start(&mpsl_work_q, mpsl_work_stack,
+		       K_THREAD_STACK_SIZEOF(mpsl_work_stack),
+		       K_PRIO_COOP(CONFIG_MPSL_THREAD_COOP_PRIO));
+	k_thread_name_set(&mpsl_work_q.thread, "MPSL Work");
+	k_work_init(&mpsl_low_prio_work, mpsl_low_prio_work_handler);
 
 	IRQ_CONNECT(MPSL_LOW_PRIO_IRQn, MPSL_LOW_PRIO,
 		    mpsl_low_prio_irq_handler, NULL, 0);
@@ -271,5 +283,5 @@ static int mpsl_signal_thread_init(const struct device *dev)
 }
 
 SYS_INIT(mpsl_lib_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
-SYS_INIT(mpsl_signal_thread_init, POST_KERNEL,
+SYS_INIT(mpsl_work_init, POST_KERNEL,
 	 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
