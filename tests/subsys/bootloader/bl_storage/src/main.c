@@ -7,27 +7,28 @@
 #include <ztest.h>
 
 #include "bl_storage.h"
+#include "bl_secure_counters.h"
 #include "sys/reboot.h"
 
 void test_monotonic_counter(void)
 {
 	int ret;
 
-	printk("get_monotonic_counter() = %d\n", get_monotonic_counter());
+	printk("get_monotonic_counter() = %d\n", get_monotonic_counter(COUNTER_DESC_VERSION));
 
 	zassert_equal(CONFIG_SB_NUM_VER_COUNTER_SLOTS,
-		num_monotonic_counter_slots(), NULL);
+		num_monotonic_counter_slots(COUNTER_DESC_VERSION), NULL);
 	zassert_equal(CONFIG_FW_INFO_FIRMWARE_VERSION,
-		get_monotonic_counter() >> 1,
+		get_monotonic_counter(COUNTER_DESC_VERSION) >> 1,
 		NULL);
 	zassert_equal(-EINVAL,
-		set_monotonic_counter(CONFIG_FW_INFO_FIRMWARE_VERSION << 1),
+		set_monotonic_counter(COUNTER_DESC_VERSION, CONFIG_FW_INFO_FIRMWARE_VERSION << 1),
 		NULL);
-	zassert_equal(-EINVAL, set_monotonic_counter(0), NULL);
-	ret = set_monotonic_counter((CONFIG_FW_INFO_FIRMWARE_VERSION + 1) << 1);
+	zassert_equal(-EINVAL, set_monotonic_counter(COUNTER_DESC_VERSION, 0), NULL);
+	ret = set_monotonic_counter(COUNTER_DESC_VERSION, (CONFIG_FW_INFO_FIRMWARE_VERSION + 1) << 1);
 	zassert_equal(0, ret, "ret %d\r\n", ret);
 	zassert_equal(CONFIG_FW_INFO_FIRMWARE_VERSION + 1,
-		get_monotonic_counter() >> 1, NULL);
+		get_monotonic_counter(COUNTER_DESC_VERSION) >> 1, NULL);
 	printk("Rebooting. Should fail to validate because of "
 		"monotonic counter.\n");
 	sys_reboot(0);

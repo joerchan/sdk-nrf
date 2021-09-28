@@ -74,37 +74,13 @@ int public_key_data_read(uint32_t key_idx, uint8_t *p_buf, size_t buf_size);
 void invalidate_public_key(uint32_t key_idx);
 
 /**
- * @brief Get the number of monotonic counter slots.
+ * @brief Function for getting the counter collection pointer used by the immutable bootloader.
  *
- * @return The number of slots. If the provision page does not contain the
- *         information, 0 is returned.
+ * The counter_collection instance stored after the provision partition.
+ *
  */
-uint16_t num_monotonic_counter_slots(void);
+struct counter_collection *bl_storage_get_counter_collection(void);
 
-/**
- * @brief Get the current HW monotonic counter.
- *
- * @return The current value of the counter.
- */
-uint16_t get_monotonic_counter(void);
-
-/**
- * @brief Set the current HW monotonic counter.
- *
- * @note FYI for users looking at the values directly in flash:
- *       Values are stored with their bits flipped. This is to squeeze one more
- *       value out of the counter.
- *
- * @param[in]  new_counter  The new counter value. Must be larger than the
- *                          current value.
- *
- * @retval 0        The counter was updated successfully.
- * @retval -EINVAL  @p new_counter is invalid (must be larger than current
- *                  counter, and cannot be 0xFFFF).
- * @retval -ENOMEM  There are no more free counter slots (see
- *                  @kconfig{CONFIG_SB_NUM_VER_COUNTER_SLOTS}).
- */
-int set_monotonic_counter(uint16_t new_counter);
 
   /** @} */
 

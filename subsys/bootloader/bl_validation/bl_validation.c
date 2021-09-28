@@ -9,6 +9,7 @@
 #include <fw_info.h>
 #include <kernel.h>
 #include <bl_storage.h>
+#include <bl_secure_counters.h>
 
 
 int set_monotonic_version(uint16_t version, uint16_t slot)
@@ -17,9 +18,9 @@ int set_monotonic_version(uint16_t version, uint16_t slot)
 	__ASSERT(slot <= 1, "Slot must be either 0 or 1.\r\n");
 	printk("Setting monotonic counter (version: %d, slot: %d)\r\n",
 		version, slot);
-	int err = set_monotonic_counter((version << 1) | !slot);
+	int err = set_monotonic_counter(COUNTER_DESC_VERSION, (version << 1) | !slot);
 
-	if (num_monotonic_counter_slots() == 0) {
+	if (num_monotonic_counter_slots(COUNTER_DESC_VERSION) == 0) {
 		printk("Monotonic version counter is disabled.\r\n");
 	} else if (err != 0) {
 		printk("set_monotonic_counter() error: %d\n\r", err);
@@ -29,7 +30,7 @@ int set_monotonic_version(uint16_t version, uint16_t slot)
 
 uint16_t get_monotonic_version(uint16_t *slot_out)
 {
-	uint16_t monotonic_version = get_monotonic_counter();
+	uint16_t monotonic_version = get_monotonic_counter(COUNTER_DESC_VERSION);
 
 	if (slot_out != NULL) {
 		*slot_out = !(monotonic_version & 1);

@@ -10,7 +10,12 @@ add_subdirectory_ifdef(CONFIG_IS_SECURE_BOOTLOADER bootloader)
 add_subdirectory_ifdef(CONFIG_SECURE_BOOT bootloader/image)
 add_subdirectory_ifdef(CONFIG_SECURE_BOOT_CRYPTO bootloader/bl_crypto)
 add_subdirectory_ifdef(CONFIG_SECURE_BOOT_VALIDATION bootloader/bl_validation)
-add_subdirectory_ifdef(CONFIG_SECURE_BOOT_STORAGE bootloader/bl_storage)
+
+if(CONFIG_SECURE_BOOT_STORAGE)
+  add_subdirectory(bootloader/bl_storage)
+  add_subdirectory(bootloader/bl_otp_read_write)
+  add_subdirectory(bootloader/bl_secure_counters)
+endif()
 
 add_subdirectory(net)
 add_subdirectory_ifdef(CONFIG_ESB		esb)
