@@ -15,25 +15,30 @@ import os
 
 
 def generate_provision_hex_file(s0_address, s1_address, hashes, provision_address, output, max_size,
-                                num_counter_slots_version):
+                                num_counter_slots_version, write_counters):
     # Add addresses
     provision_data = struct.pack('III', s0_address, s1_address, len(hashes))
     for mhash in hashes:
         provision_data += struct.pack('I', 0xFFFFFFFF) # Invalidation token
         provision_data += mhash
 
-    num_counters = 1 if num_counter_slots_version > 0 else 0
-    provision_data += struct.pack('H', 1) # Type "counter collection"
-    provision_data += struct.pack('H', num_counters)
+    if(write_counters == "y"):
+        num_counters = 1 if num_counter_slots_version > 0 else 0
 
-    if num_counters == 1:
-        if num_counter_slots_version % 2 == 1:
-            num_counter_slots_version += 1
-            print(f'Monotonic counter slots rounded up to {num_counter_slots_version}')
-        provision_data += struct.pack('H', 1) # counter description
-        provision_data += struct.pack('H', num_counter_slots_version)
+        provision_data += struct.pack('H', 1) # Type "counter collection"
+        provision_data += struct.pack('H', num_counters)
 
-    assert (len(provision_data) + (2 * num_counter_slots_version)) <= max_size, """Provisioning data doesn't fit.
+        if num_counter_slots_version > 0 :
+            if num_counter_slots_version % 2 == 1:
+                num_counter_slots_version += 1
+                print(f'Monotonic counter slots rounded up to {num_counter_slots_version}')
+            provision_data += struct.pack('H', 0x10) # counter description
+            provision_data += struct.pack('H', num_counter_slots_version)
+            provision_data += bytes(2 * num_counter_slots_version * [0xFF])
+
+
+
+    assert len(provision_data) <= max_size, """Provisioning data doesn't fit.
 Reduce the number of public keys or counter slots and try again."""
 
     ih = IntelHex()
@@ -59,6 +64,8 @@ def parse_args():
                         help='Number of monotonic counter slots for version number.')
     parser.add_argument('--no-verify-hashes', required=False, action="store_true",
                         help="Don't check hashes for applicability. Use this option only for testing.")
+    parser.add_argument('--write-counters', required=True,
+                        help="Skip writing monotonic counters")
     return parser.parse_args()
 
 
@@ -94,7 +101,9 @@ def main():
                                 provision_address=provision_address,
                                 output=args.output,
                                 max_size=args.max_size,
-                                num_counter_slots_version=args.num_counter_slots_version)
+                                num_counter_slots_version=args.num_counter_slots_version,
+                                write_counters=args.write_counters
+                                )
 
 
 if __name__ == '__main__':

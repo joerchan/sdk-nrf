@@ -92,6 +92,22 @@ if (CONFIG_SB_DEBUG_NO_VERIFY_HASHES)
   set(no_verify_hashes_arg --no-verify-hashes)
 endif()
 
+set(PROVISION_TARGET "provision_target")
+
+if (CONFIG_BOOTLOADER_MCUBOOT)
+  # If the mcuboot is present we will create the provision without the counters,
+  # these will be added later during mcuboot built
+  set(write_counters_arg --write-counters "n")
+  set_property(GLOBAL PROPERTY SECURE_BOOTLOADER_ENABLED true)
+  set_property(GLOBAL PROPERTY SECURE_BOOTLOADER_PROVISION_HEX "${PROVISION_HEX}")
+  set_property(GLOBAL PROPERTY SECURE_BOOTLOADER_COUNTER_SLOTS ${CONFIG_SB_NUM_VER_COUNTER_SLOTS})
+  set_property(GLOBAL PROPERTY SECURE_BOOTLOADER_PROVISION_TARGET ${PROVISION_TARGET})
+  set(provision_write_later True)
+else()
+  set(write_counters_arg --write-counters "y")
+  set(provision_write_later False)
+endif()
+
 add_custom_command(
   OUTPUT
   ${PROVISION_HEX}
@@ -106,6 +122,7 @@ add_custom_command(
   ${monotonic_counter_arg}
   --max-size ${CONFIG_PM_PARTITION_SIZE_PROVISION}
   ${no_verify_hashes_arg}
+  ${write_counters_arg}
   DEPENDS
   ${PROVISION_KEY_DEPENDS}
   WORKING_DIRECTORY
@@ -116,7 +133,7 @@ add_custom_command(
   )
 
 add_custom_target(
-  provision_target
+  ${PROVISION_TARGET}
   DEPENDS
   ${PROVISION_HEX}
   ${PROVISION_DEPENDS}
@@ -127,7 +144,7 @@ get_property(
   GLOBAL PROPERTY provision_PM_HEX_FILE SET
   )
 
-if(NOT provision_set)
+if(NOT provision_set AND NOT ${provision_write_later})
   # Set hex file and target for the 'provision' placeholder partition.
   # This includes the hex file (and its corresponding target) to the build.
   set_property(
@@ -139,6 +156,6 @@ if(NOT provision_set)
   set_property(
     GLOBAL PROPERTY
     provision_PM_TARGET
-    provision_target
+    ${PROVISION_TARGET}
     )
 endif()

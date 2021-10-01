@@ -20,10 +20,15 @@ if (CONFIG_MCUBOOT)
     set_shared(IMAGE ${IMAGE_NAME} PROPERTY RAM_FLASH_SIZE ${ram_flash_size})
     set_shared(IMAGE ${IMAGE_NAME} PROPERTY RAM_FLASH_LABEL ${ram_flash_ctrl_label})
   endif()
+
+  if(CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION)
+    set_shared(IMAGE ${IMAGE_NAME} PROPERTY MCUBOOT_UPDATEABLE_IMAGE_NUMBER ${CONFIG_UPDATEABLE_IMAGE_NUMBER})
+    set_shared(IMAGE ${IMAGE_NAME} PROPERTY MCUBOOT_HW_DOWNGRADE_PREVENTION ${CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION})
+  endif()
+
 endif()
 
 if(CONFIG_BOOTLOADER_MCUBOOT)
-
   include(${ZEPHYR_BASE}/../nrf/cmake/fw_zip.cmake)
 
   function(sign)
@@ -214,6 +219,9 @@ if(CONFIG_BOOTLOADER_MCUBOOT)
       )
   endif()
 
+  # TODO: Before we add the child image we need to run  with mcuboot_secure_counters_address.py
+  # the hex file. The output configuration can be passed to the mcuboot image as an
+  # add_overlay_config(). This will allow it to be parsed by the bl_secure_couters.
   add_child_image(
     NAME mcuboot
     SOURCE_DIR ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr
@@ -519,7 +527,72 @@ if(CONFIG_BOOTLOADER_MCUBOOT)
         "version_B0=${CONFIG_FW_INFO_FIRMWARE_VERSION}"
         )
     endif()
+
   endif(CONFIG_SIGN_IMAGES)
+
+
+  get_property(secure_bootloader_enabled GLOBAL PROPERTY SECURE_BOOTLOADER_ENABLED)
+  get_shared(mcuboot_hw_downgrade_prevention IMAGE mcuboot PROPERTY MCUBOOT_HW_DOWNGRADE_PREVENTION)
+  get_shared(mcuboot_image_number IMAGE mcuboot PROPERTY MCUBOOT_UPDATEABLE_IMAGE_NUMBER)
+
+  if(${secure_bootloader_enabled})
+    get_property(provision_hex GLOBAL PROPERTY SECURE_BOOTLOADER_PROVISION_HEX)
+    get_property(provision_counter_slots GLOBAL PROPERTY SECURE_BOOTLOADER_COUNTER_SLOTS)
+    get_property(provision_target GLOBAL PROPERTY SECURE_BOOTLOADER_PROVISION_TARGET)
+    set(provision_hex_arg --b0-provision-hex ${provision_hex})
+    set(provision_counter_slots_arg --b0-provision-counter-slots ${provision_counter_slots})
+  endif()
+
+  if(${mcuboot_hw_downgrade_prevention})
+    set(mcuboot_counters "${mcuboot_image_number}")
+    set(mcuboot_counter_slots ${CONFIG_MCUBOOT_HW_COUNTER_SLOTS})
+  else()
+    set(mcuboot_counters 0)
+    set(mcuboot_counter_slots 0)
+  endif()
+
+  set(PROVISION_COUNTERS_MERGED              provision_counters_merged.hex)
+  set(PROVISION_COUNTERS_MERGED_HEX          ${PROJECT_BINARY_DIR}/${PROVISION_COUNTERS_MERGED})
+
+  add_custom_command(
+    OUTPUT
+    ${PROVISION_COUNTERS_MERGED_HEX}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${NRF_DIR}/scripts/bootloader/secure_counters.py
+    ${provision_hex_arg}
+    ${provision_counter_slots_arg}
+    --mcuboot-num-counters  ${mcuboot_counters}
+    --mcuboot-counter-slots ${mcuboot_counter_slots}
+    --output ${PROVISION_COUNTERS_MERGED_HEX}
+    --secure-cnt-addr $<TARGET_PROPERTY:partition_manager,PM_MCUBOOT_PROVISION_ADDRESS>
+    --max-size $<TARGET_PROPERTY:partition_manager,PM_MCUBOOT_PROVISION_SIZE>
+    WORKING_DIRECTORY
+    ${PROJECT_BINARY_DIR}
+    COMMENT
+    "Creating security counters for bootloader, storing to ${SECURITY_COUNTERS_HEX}"
+    USES_TERMINAL
+  )
+
+
+  add_custom_target(
+    mcuboot_provision_target
+    DEPENDS
+    ${provision_target}
+    ${PROVISION_COUNTERS_MERGED_HEX}
+  )
+
+  set_property(
+    GLOBAL PROPERTY
+    mcuboot_provision_PM_HEX_FILE
+    ${PROVISION_COUNTERS_MERGED_HEX}
+  )
+
+  set_property(
+    GLOBAL PROPERTY
+    mcuboot_provision_PM_TARGET
+    mcuboot_provision_target
+  )
 endif()
 
 # Zephyr has a Kconfig option used for signing an application image

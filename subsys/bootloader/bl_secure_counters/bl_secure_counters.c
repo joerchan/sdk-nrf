@@ -14,14 +14,8 @@
 #include <pm_config.h>
 #include <nrfx_nvmc.h>
 
-#ifdef CONFIG_BOOTLOADER_MCUBOOT
-	static consts struct counter_collection *mcuboot_counter_collection =
-		(struct counter_collection *)PM_MCUBOOT_PROVISION_ADDRESS;
-#endif
-
 /* Value written to the invalidation token when invalidating an entry. */
 #define INVALID_VAL 0xFFFF0000
-
 
 /** Get the counter_collection data structure in the provision data. */
 static const struct counter_collection *get_counter_collection(uint16_t counter_desc)
@@ -31,18 +25,23 @@ static const struct counter_collection *get_counter_collection(uint16_t counter_
 	switch (counter_desc)
 	{
 
-#ifdef CONFIG_SECURE_BOOT
 	case COUNTER_DESC_VERSION:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID0:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID1:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID2:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID3:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID4:
+	case COUNTER_DESC_MCUBOOT_HW_COUNTER_ID5:
+#ifdef CONFIG_SECURE_BOOT_STORAGE
 		collection = (struct counter_collection *) bl_storage_get_counter_collection();
 		break;
-#endif
-
-#ifdef CONFIG_BOOTLOADER_MCUBOOT
-	case COUNTER_DESC_MCUBOOT_HW_COUNTERS:
-		collection = (struct counter_collection *) &mcuboot_counter_collection;
+#elif CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION
+		collection =  (struct counter_collection *) CONFIG_SECURE_COUNTERS_ADDRESS;
+		break;
+#else
+		return NULL;
 		break;
 #endif
-
 	default:
 		return NULL;
 		break;
@@ -139,7 +138,16 @@ static uint16_t get_counter(uint16_t counter_desc, const uint16_t **free_slot)
 
 uint16_t get_monotonic_counter(uint16_t counter_desc)
 {
-	return get_counter(counter_desc, NULL);
+	const uint16_t *next_counter_addr;
+	uint16_t counter = get_counter(counter_desc, &next_counter_addr);
+
+	/* The counter coundn't be found */
+	if (next_counter_addr == NULL || counter == 0xFFFF) {
+		/* No more room. */
+		return 0xFFFF;
+	}
+
+	return (counter);
 }
 
 
@@ -158,6 +166,7 @@ int set_monotonic_counter(uint16_t counter_desc, uint16_t new_counter)
 		return -ENOMEM;
 	}
 
+	/* 0 is not a valid number for the counter */
 	otp_write_halfword(next_counter_addr, ~new_counter);
 	return 0;
 }

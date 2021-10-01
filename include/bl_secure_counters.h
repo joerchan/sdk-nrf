@@ -20,7 +20,7 @@
  *  (available on e.g. nRF91 and nRF53).
  */
 struct monotonic_counter {
-	uint16_t description; /* Counter description. What the counter is used for. See COUNTER_DESC_*. */
+	uint16_t description;       /* Counter description. What the counter is used for. See COUNTER_DESC_*. */
 	uint16_t num_counter_slots; /* Number of entries in 'counter_slots' list. */
 	uint16_t counter_slots[1];
 };
@@ -37,8 +37,13 @@ struct counter_collection {
 };
 
 #define TYPE_COUNTERS 1                              /* Type referring to counter collection. */
-#define COUNTER_DESC_VERSION 0xA5B5                  /* Counter description value for firmware version. */
-#define COUNTER_DESC_MCUBOOT_HW_COUNTERS 0x5C5D      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_VERSION 0x10                    /* Counter description value for firmware version. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID0 0x0      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID1 0x1      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID2 0x2      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID3 0x3      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID4 0x4      /* Counter description value for mcuboot hw counters. */
+#define COUNTER_DESC_MCUBOOT_HW_COUNTER_ID5 0x5      /* Counter description value for mcuboot hw counters. */
 
 /* Value written to the invalidation token when invalidating an entry. */
 #define INVALID_VAL 0xFFFF0000
