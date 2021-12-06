@@ -6,7 +6,6 @@
 
 #include "bl_storage.h"
 #include "bl_secure_counters.h"
-#include "bl_otp_read_write.h"
 #include <string.h>
 #include <errno.h>
 #include <nrf.h>
@@ -47,7 +46,7 @@ static const struct counter_collection *get_counter_collection(uint16_t counter_
 		break;
 	}
 
-	return otp_read_halfword(&collection->type) == TYPE_COUNTERS
+	return nrfx_nvmc_otp_halfword_read((uint32_t)(&collection->type)) == TYPE_COUNTERS
 		? collection : NULL;
 }
 
@@ -66,10 +65,10 @@ static const struct monotonic_counter *get_counter_struct(uint16_t counter_desc)
 
 	const struct monotonic_counter *current = counters->counters;
 
-	for (size_t i = 0; i < otp_read_halfword(&counters->num_counters); i++) {
-		uint16_t num_slots = otp_read_halfword(&current->num_counter_slots);
+	for (size_t i = 0; i < nrfx_nvmc_otp_halfword_read((uint32_t)(&counters->num_counters)); i++) {
+		uint16_t num_slots = nrfx_nvmc_otp_halfword_read((uint32_t)(&current->num_counter_slots));
 
-		if (otp_read_halfword(&current->description) == counter_desc) {
+		if (nrfx_nvmc_otp_halfword_read((uint32_t)(&current->description)) == counter_desc) {
 			return current;
 		}
 
@@ -87,7 +86,7 @@ uint16_t num_monotonic_counter_slots(uint16_t counter_desc)
 	uint16_t num_slots = 0;
 
 	if (counter != NULL) {
-		num_slots = otp_read_halfword(&counter->num_counter_slots);
+		num_slots = nrfx_nvmc_otp_halfword_read((uint32_t)(&counter->num_counter_slots));
 	}
 	return num_slots != 0xFFFF ? num_slots : 0;
 }
@@ -116,7 +115,7 @@ static uint16_t get_counter(uint16_t counter_desc, const uint16_t **free_slot)
 	num_slots = num_monotonic_counter_slots(counter_desc);
 
 	for (uint32_t i = 0; i < num_slots; i++) {
-		uint16_t counter = ~otp_read_halfword(&slots[i]);
+		uint16_t counter = ~nrfx_nvmc_otp_halfword_read((uint32_t)(&slots[i]));
 
 		if (counter == 0) {
 			addr = &slots[i];
@@ -167,6 +166,7 @@ int set_monotonic_counter(uint16_t counter_desc, uint16_t new_counter)
 	}
 
 	/* 0 is not a valid number for the counter */
-	otp_write_halfword(next_counter_addr, ~new_counter);
+	nrfx_nvmc_halfword_write((uint32_t)next_counter_addr, ~new_counter);
+
 	return 0;
 }

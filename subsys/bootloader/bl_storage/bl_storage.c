@@ -6,7 +6,6 @@
 
 #include "bl_storage.h"
 #include "bl_secure_counters.h"
-#include "bl_otp_read_write.h"
 #include <string.h>
 #include <errno.h>
 #include <nrf.h>
@@ -81,7 +80,7 @@ int verify_public_keys(void)
 			size_t hash_len_u16 = (CONFIG_SB_PUBLIC_KEY_HASH_LEN/2);
 
 			for (uint32_t i = 0; i < hash_len_u16; i++) {
-				if (otp_read_halfword(&p_key_n[i]) == 0xFFFF) {
+				if (nrfx_nvmc_otp_halfword_read((uint32_t)(&p_key_n[i])) == 0xFFFF) {
 					return -EHASHFF;
 				}
 			}

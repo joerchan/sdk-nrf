@@ -12,7 +12,6 @@ add_subdirectory_ifdef(CONFIG_SECURE_BOOT_CRYPTO bootloader/bl_crypto)
 add_subdirectory_ifdef(CONFIG_SECURE_BOOT_VALIDATION bootloader/bl_validation)
 
 if(CONFIG_SECURE_BOOT_STORAGE OR  CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION)
-  add_subdirectory(bootloader/bl_otp_read_write)
   add_subdirectory(bootloader/bl_secure_counters)
 endif()
 
