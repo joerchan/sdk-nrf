@@ -67,49 +67,38 @@ nrfx_err_t nfc_platform_setup(void)
 
 static nrfx_err_t nfc_platform_tagheaders_get(uint32_t tag_header[3])
 {
-	__IOM FICR_NFC_Type *ficr_nfc =
-#if defined(NRF_TRUSTZONE_NONSECURE)
-				&NRF_FICR_S->NFC;
-#else
-				&NRF_FICR->NFC;
-#endif
-
-
 #ifdef CONFIG_TRUSTED_EXECUTION_NONSECURE
 #if defined(CONFIG_BUILD_WITH_TFM)
 	uint32_t err = 0;
 	enum tfm_platform_err_t plt_err;
-	FICR_NFC_Type ficr_nfc_ns;
 
-	plt_err = tfm_platform_mem_read(&ficr_nfc_ns, (uint32_t)ficr_nfc,
-					sizeof(ficr_nfc_ns), &err);
+	plt_err = tfm_platform_mem_read(tag_header, (uint32_t)&NRF_FICR_S->NFC,
+					12, &err);
 	if (plt_err != TFM_PLATFORM_ERR_SUCCESS || err != 0) {
 		LOG_ERR("Could not read FICR NFC Tag Header (plt_err %d, err: %d)",
 			plt_err, err);
 		return NRFX_ERROR_INTERNAL;
 	}
 
-	ficr_nfc = &ficr_nfc_ns;
 #elif defined(CONFIG_SPM_SERVICE_READ)
 	int err;
-	FICR_NFC_Type ficr_nfc_ns;
 
-	err = spm_request_read(&ficr_nfc_ns, (uint32_t)ficr_nfc,
-			       sizeof(ficr_nfc_ns));
+	err = spm_request_read(tag_header, (uint32_t)&NRF_FICR_S->NFC,
+			       12);
 	if (err != 0) {
 		LOG_ERR("Could not read FICR NFC Tag Header (err: %d)", err);
 		return NRFX_ERROR_INTERNAL;
 	}
 
-	ficr_nfc = &ficr_nfc_ns;
 #else
 	return NRFX_ERROR_FORBIDDEN;
 #endif
+#else
+	tag_header[0] = NRF_FICR->NFC.TAGHEADER0;
+	tag_header[1] = NRF_FICR->NFC.TAGHEADER1;
+	tag_header[2] = NRF_FICR->NFC.TAGHEADER2;
 #endif /* CONFIG_TRUSTED_EXECUTION_NONSECURE */
 
-	tag_header[0] = ficr_nfc->TAGHEADER0;
-	tag_header[1] = ficr_nfc->TAGHEADER1;
-	tag_header[2] = ficr_nfc->TAGHEADER2;
 
 	return NRFX_SUCCESS;
 }
