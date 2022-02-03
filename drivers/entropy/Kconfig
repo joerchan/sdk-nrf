@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 
 config ENTROPY_CC3XX
-	bool "Arm CC3XX RNG driver for Nordic devices" if !BUILD_WITH_TFM
+	bool "Arm CC3XX RNG driver for Nordic devices"
 	depends on CRYPTOCELL_USABLE || SPM || BUILD_WITH_TFM
 	depends on ENTROPY_GENERATOR
 	select ENTROPY_HAS_DRIVER
