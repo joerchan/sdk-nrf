@@ -6,7 +6,9 @@
 
 config ENTROPY_CC3XX
 	bool "Arm CC3XX RNG driver for Nordic devices"
-	depends on CRYPTOCELL_USABLE || SPM || BUILD_WITH_TFM
+	# TODO: CRYPTOCELL_USABLE is set when BUILD_WITH_TFM=y (probably same for SPM)
+	# Continue with cryptocell-usable rework in nrfxlib
+	depends on CRYPTOCELL_USABLE || SPM_SERVICE_RNG || TFM_CRYPTO_RNG_MODULE_ENABLED
 	depends on ENTROPY_GENERATOR
 	select ENTROPY_HAS_DRIVER
 	default y

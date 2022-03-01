@@ -13,8 +13,8 @@
 # all parts of the TF-M module kconfig. If, however, TFM_MINIMAL is set,
 # only a subset of these kconfig files will be included.
 
-config BUILD_WITH_TFM
-	select ENTROPY_CC3XX if TFM_PARTITION_CRYPTO
+# config TFM_CRYPTO_RNG_MODULE_ENABLED
+# 	select ENTROPY_CC3XX if TFM_PARTITION_CRYPTO
 
 config TFM_IPC
 	default y if TFM_MINIMAL
