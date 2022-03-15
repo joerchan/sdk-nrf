@@ -61,6 +61,10 @@ if(BL2)
   message(FATAL_ERROR "BL2 is not supported")
 endif()
 
+target_include_directories(platform_s BEFORE PUBLIC
+  ${CMAKE_BINARY_DIR}/../tfm/nrfx
+)
+
 if(TFM_PARTITION_PLATFORM)
   set(src_dir ${CMAKE_CURRENT_LIST_DIR}/src)
 
