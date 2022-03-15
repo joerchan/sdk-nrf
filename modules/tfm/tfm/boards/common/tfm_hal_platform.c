@@ -19,6 +19,10 @@
 #include "tfm_spm_log.h"
 #include "hw_unique_key.h"
 
+#include "tfm_peripherals_config.h"
+#include "nrf.h"
+#include "debug.h"
+
 #if defined(TFM_PARTITION_CRYPTO)
 static enum tfm_hal_status_t crypto_platform_init(void)
 {
@@ -58,6 +62,9 @@ static enum tfm_hal_status_t crypto_platform_init(void)
 enum tfm_hal_status_t tfm_hal_platform_init(void)
 {
 	enum tfm_hal_status_t status;
+
+	debug_pin_range_enable(0, 15);
+	debug_pin_range_test(0, 15);
 
 	status = tfm_hal_platform_common_init();
 	if (status != TFM_HAL_SUCCESS) {
