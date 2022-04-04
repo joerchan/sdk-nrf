@@ -63,9 +63,6 @@ enum tfm_hal_status_t tfm_hal_platform_init(void)
 {
 	enum tfm_hal_status_t status;
 
-	debug_pin_range_enable(0, 15);
-	debug_pin_range_test(0, 15);
-
 	status = tfm_hal_platform_common_init();
 	if (status != TFM_HAL_SUCCESS) {
 		return status;
