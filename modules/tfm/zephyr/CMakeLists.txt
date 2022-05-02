@@ -88,4 +88,11 @@ if (NOT CONFIG_MBEDTLS_PSA_CRYPTO_STORAGE_C)
     )
 endif()
 
+if (CONFIG_BOOTLOADER_MCUBOOT)
+  set_property(TARGET zephyr_property_target
+    APPEND PROPERTY TFM_CMAKE_OPTIONS
+    -DCONFIG_BOOTLOADER_MCUBOOT=TRUE
+    )
+endif()
+
 zephyr_include_directories(${NRF_DIR}/include/tfm)
