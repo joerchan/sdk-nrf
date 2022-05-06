@@ -13,6 +13,8 @@
 # all parts of the TF-M module kconfig. If, however, TFM_MINIMAL is set,
 # only a subset of these kconfig files will be included.
 
+if BUILD_WITH_TFM
+
 config TFM_IPC
 	default y if TFM_MINIMAL
 
@@ -36,12 +38,20 @@ config TFM_MINIMAL
 	bool "Use minimal TF-M build"
 	select PSA_DEFAULT_OFF
 	select TFM_LOG_LEVEL_SILENCE
+	default y
 	help
 	  Use minimal TF-M build. This will make the TF-M image fit within 32kB.
 	  No configuration of the size of the partition nor the features of the
 	  TF-M image can be done when this option is selected. If your application
 	  needs a different TF-M configuration you have to disable this option
 	  and reproduce the desired configuration through kconfig fragments.
+
+config TFM_EXPERIMENTAL
+	bool
+	select EXPERIMENTAL
+	default y if !TFM_MINIMAL
+
+endif # BUILD_WITH_TFM
 
 source "$(ZEPHYR_BASE)/modules/trusted-firmware-m/Kconfig.tfm"
 
