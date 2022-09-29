@@ -188,6 +188,9 @@ static void spp_signals_process(psa_signal_t signals)
 
 		psa_reset_signal(TFM_GPIOTE0_IRQ_SIGNAL);
 	}
+
+	/* Trigger Fault */
+	NRF_SPIM0_S->CONFIG = 0;
 }
 
 static void spp_send(void)

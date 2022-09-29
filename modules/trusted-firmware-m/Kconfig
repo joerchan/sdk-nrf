@@ -41,13 +41,20 @@ config TFM_SECURE_UART1
 	  application. When this option is selected the device tree node for
 	  UART1 needs to be disabled for the non-secure application.
 
+choice TFM_SPM_LOG_LEVEL
+	default TFM_SPM_LOG_LEVEL_DEBUG
+endchoice
+
+config TFM_EXCEPTION_INFO_DUMP
+	bool
+	default y
+
 choice TFM_PROFILE_TYPE
 	default TFM_PROFILE_TYPE_MINIMAL
 
 config TFM_PROFILE_TYPE_MINIMAL
 	bool "Use minimal TF-M build"
 	select PSA_DEFAULT_OFF
-	imply TFM_LOG_LEVEL_SILENCE
 	help
 	  Use minimal TF-M build. This will make the TF-M image fit within 32kB.
 	  No configuration of the size of the partition nor the features of the
@@ -159,7 +166,7 @@ config TFM_HW_INIT_NRF_PERIPHERALS
 
 config TFM_HALT_ON_CORE_PANIC
 	bool "Halt TF-M on core panic"
-	default y if !RESET_ON_FATAL_ERROR
+	default y
 	help
 	  On fatal errors in the TF-m secure image, halt instead of rebooting.
 

@@ -143,4 +143,7 @@ void main(void)
 		printk("S0 active? %s\n", s0_active ? "True" : "False");
 #endif /*  PM_S1_ADDRESS */
 	}
+
+	/* Trigger Fault */
+	NRF_SPIM0_S->CONFIG = 0;
 }

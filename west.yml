@@ -33,6 +33,8 @@ manifest:
       url-base: https://github.com/memfault
     - name: ant-nrfconnect
       url-base: https://github.com/ant-nrfconnect
+    - name: joerchan
+      url-base: https://github.com/joerchan
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -118,7 +120,8 @@ manifest:
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
-      revision: ce077f50732f56dc277d829638ad6e033ab9f37b
+      remote: joerchan
+      revision: tfm-log-uart0-prototype
     - name: tfm-mcuboot # This is used by the trusted-firmware-m module.
       repo-path: sdk-mcuboot
       path: modules/tee/tfm-mcuboot
