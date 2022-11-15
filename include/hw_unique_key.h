@@ -30,10 +30,10 @@ extern "C" {
 #if DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_kmu)
 #define HUK_HAS_KMU
 #endif
-#if defined(CONFIG_HAS_HW_NRF_CC310)
+#if defined(CONFIG_CRYPTOCELL_CC310_USABLE)
 #define HUK_HAS_CC310
 #endif
-#if defined(CONFIG_HAS_HW_NRF_CC312)
+#if defined(CONFIG_CRYPTOCELL_CC312_USABLE)
 #define HUK_HAS_CC312
 #endif
 
