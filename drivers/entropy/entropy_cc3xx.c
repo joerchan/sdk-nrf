@@ -16,10 +16,6 @@
 
 #if defined(CONFIG_SPM)
 #include "secure_services.h"
-#elif defined(CONFIG_BUILD_WITH_TFM)
-#include <psa/crypto.h>
-#include <psa/crypto_extra.h>
-#include <tfm_ns_interface.h>
 #else
 #include "nrf_cc3xx_platform_ctr_drbg.h"
 #endif
@@ -33,16 +29,6 @@ static int entropy_cc3xx_rng_get_entropy(const struct device *dev,
 	__ASSERT_NO_MSG(buffer != NULL);
 	int err = EINVAL;
 
-#if defined(CONFIG_BUILD_WITH_TFM)
-	psa_status_t status = PSA_ERROR_GENERIC_ERROR;
-
-	status = psa_generate_random(buffer, length);
-	if (status == PSA_SUCCESS) {
-		err = 0;
-	}
-
-	return err;
-#else
 	size_t olen;
 	size_t offset = 0;
 	size_t chunk_size = CTR_DRBG_MAX_REQUEST;
@@ -94,21 +80,13 @@ static int entropy_cc3xx_rng_get_entropy(const struct device *dev,
 	}
 
 	return err;
-#endif /* defined(CONFIG_BUILD_WITH_TFM) */
 }
 
 static int entropy_cc3xx_rng_init(const struct device *dev)
 {
 	(void)dev;
 
-#if defined(CONFIG_BUILD_WITH_TFM)
-	psa_status_t status;
-
-	status = psa_crypto_init();
-	if (status != PSA_SUCCESS) {
-		return -EINVAL;
-	}
-#elif !defined(CONFIG_SPM)
+#if !defined(CONFIG_SPM)
 	int ret;
 
 	/* When the given context is NULL, a global internal
