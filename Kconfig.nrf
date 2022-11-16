@@ -31,6 +31,11 @@ config MBEDTLS_LIBRARY_NRF_SECURITY
 
 endchoice
 
+config TEST_RANDOM_GENERATOR
+	bool "Non-random number generator"
+	help
+	  Override of TEST_RANDOM_GENERATOR without dependency !HAS_ENTROPY
+
 # nRF Connect SDK default experimental warnings to on.
 config WARN_EXPERIMENTAL
 	default y
