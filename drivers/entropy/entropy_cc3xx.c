@@ -107,8 +107,6 @@ static const struct entropy_driver_api entropy_cc3xx_rng_api = {
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(cryptocell), okay)
 #define CRYPTOCELL_NODE_ID DT_NODELABEL(cryptocell)
-#elif DT_NODE_HAS_STATUS(DT_NODELABEL(cryptocell_sw), okay)
-#define CRYPTOCELL_NODE_ID DT_NODELABEL(cryptocell_sw)
 #else
 /*
  * TODO is there a better way to handle this?
