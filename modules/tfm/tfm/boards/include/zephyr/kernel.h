@@ -7,6 +7,8 @@
 #ifndef __ZEPHYR_KERNEL_H
 #define __ZEPHYR_KERNEL_H
 
+#include <zephyr/sys/printk.h>
+
 #define k_panic() tfm_core_panic()
 
 #endif /* __ZEPHYR_KERNEL_H */
