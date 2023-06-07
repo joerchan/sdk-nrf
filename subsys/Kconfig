@@ -7,7 +7,8 @@
 
 rsource "bootloader/Kconfig"
 
-rsource "nrf_security/Kconfig"
+# NB: nrf/subsys/nrf_security/Kconfig is sourced from the nrfxlib
+# module instead of from here for backwards compatibility
 
 rsource "bluetooth/Kconfig"
 
