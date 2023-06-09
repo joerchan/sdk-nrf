@@ -15,6 +15,19 @@ rsource "subsys/net/openthread/Kconfig.defconfig"
 rsource "modules/lib/matter/config/nrfconnect/chip-module/Kconfig.defconfig"
 rsource "modules/lib/matter/config/zephyr/chip-module/Kconfig.defaults"
 
+if !TFM_PROFILE_TYPE_MINIMAL
+rsource "modules/trusted-firmware-m/Kconfig.mbedtls.defconfig"
+endif # ! TFM_PROFILE_TYPE_MINIMAL
+
+if TFM_PROFILE_TYPE_MINIMAL
+rsource "modules/trusted-firmware-m/Kconfig.mbedtls_minimal.defconfig"
+rsource "modules/trusted-firmware-m/Kconfig.tfm_minimal.defconfig"
+endif # TFM_PROFILE_TYPE_MINIMAL
+
+if BUILD_WITH_TFM
+rsource "modules/trusted-firmware-m/Kconfig.psa.defconfig"
+endif # BUILD_WITH_TFM
+
 menu "Nordic nRF Connect"
 
 # Override configuration from zephyr which sets this to 0x200 if MCUboot is
