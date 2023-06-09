@@ -1,0 +1,12 @@
+if CHIP
+
+# Enable mbedTLS
+config MBEDTLS_ENABLE_HEAP
+	bool
+	default y
+
+config MBEDTLS_HEAP_SIZE
+	int
+	default 15360
+
+endif # CHIP

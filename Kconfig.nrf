@@ -12,6 +12,8 @@ orsource "./$(BOARD_DIR)/Kconfig"
 
 rsource "boards/shields/*/Kconfig.shield"
 rsource "subsys/net/openthread/Kconfig.defconfig"
+rsource "modules/lib/matter/config/nrfconnect/chip-module/Kconfig.defconfig"
+rsource "modules/lib/matter/config/zephyr/chip-module/Kconfig.defaults"
 
 menu "Nordic nRF Connect"
 
