@@ -12,8 +12,6 @@ orsource "./$(BOARD_DIR)/Kconfig"
 
 rsource "boards/shields/*/Kconfig.shield"
 rsource "subsys/net/openthread/Kconfig.defconfig"
-rsource "modules/lib/matter/config/nrfconnect/chip-module/Kconfig.defconfig"
-rsource "modules/lib/matter/config/zephyr/chip-module/Kconfig.defaults"
 
 if !TFM_PROFILE_TYPE_MINIMAL
 rsource "modules/trusted-firmware-m/Kconfig.mbedtls.defconfig"
