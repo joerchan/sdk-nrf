@@ -51,8 +51,7 @@ if(CONFIG_BUILD_WITH_TFM)
 
   get_cmake_property(all_vars VARIABLES)
 
-  # 1. Non-secure should not build anything PSA related
-  set(CONFIG_MBEDTLS_PSA_CRYPTO_C               False)
+  # 1. Start a numbered list
 
   # 2. Enable OBERON_BACKEND, disable CC3XX_BACKEND
   set(CONFIG_NRF_OBERON                         True)

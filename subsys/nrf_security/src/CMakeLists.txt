@@ -50,11 +50,21 @@ set(generated_include_path ${CMAKE_CURRENT_BINARY_DIR}/include/generated)
 file(REMOVE_RECURSE ${generated_include_path})
 
 # Generate mbed TLS configurations
-if(CONFIG_MBEDTLS_LEGACY_CRYPTO_C OR NOT COMPILE_PSA_APIS)
-  include(${NRF_SECURITY_ROOT}/cmake/legacy_crypto_config.cmake)
-else()
-  include(${NRF_SECURITY_ROOT}/cmake/psa_crypto_config.cmake)
+include(${NRF_SECURITY_ROOT}/cmake/legacy_crypto_config.cmake)
+include(${NRF_SECURITY_ROOT}/cmake/psa_crypto_config.cmake)
+
+if(CONFIG_GENERATE_MBEDTLS_CFG_FILE)
+  # Copy the mbed TLS config file (default: nrf-config.h)
+  configure_file(${NRF_SECURITY_ROOT}/configs/nrf-config.h
+    ${generated_include_path}/${CONFIG_MBEDTLS_CFG_FILE}
+  )
+
+  # Generate the mbed TLS user config file (default nrf-config-user.h)
+  configure_file(${NRF_SECURITY_ROOT}/configs/psa_crypto_config.h.template
+    ${generated_include_path}/${CONFIG_MBEDTLS_USER_CONFIG_FILE}
+  )
 endif()
+
 
 if(CONFIG_GENERATE_MBEDTLS_CFG_FILE)
   # Add the generated CONFIG_MBEDTLS_CFG_FILE file to the include path

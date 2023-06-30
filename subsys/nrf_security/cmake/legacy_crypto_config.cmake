@@ -281,15 +281,3 @@ Kconfig_check_and_set_base_depends(MBEDTLS_ECP_DP_CURVE448_ENABLED
 kconfig_check_and_set_base_depends(MBEDTLS_SHA224_C
   MBEDTLS_SHA256_C
 )
-
-if(CONFIG_GENERATE_MBEDTLS_CFG_FILE)
-  # Generate the mbed TLS config file (default nrf-config.h)
-  configure_file(${NRF_SECURITY_ROOT}/configs/legacy_crypto_config.h.template
-    ${generated_include_path}/${CONFIG_MBEDTLS_CFG_FILE}
-  )
-
-  # Copy an empty user-config to help with legacy build
-  configure_file(${NRF_SECURITY_ROOT}/configs/nrf-config-user-empty.h
-    ${generated_include_path}/${CONFIG_MBEDTLS_USER_CONFIG_FILE}
-  )
-endif()
