@@ -8,6 +8,8 @@
 #ifndef PSA_CRYPTO_CONFIG_H
 #define PSA_CRYPTO_CONFIG_H
 
+/* Make sure this is set when this file is included standalone (TF-M PSA headers) */
+#define MBEDTLS_PSA_CRYPTO_CONFIG
 
 #cmakedefine PSA_CORE_OBERON                                    @PSA_CORE_OBERON@
 
@@ -87,6 +89,13 @@
 #cmakedefine PSA_WANT_KEY_TYPE_RAW_DATA                         @PSA_WANT_KEY_TYPE_RAW_DATA@
 #cmakedefine PSA_WANT_KEY_TYPE_RSA_KEY_PAIR                     @PSA_WANT_KEY_TYPE_RSA_KEY_PAIR@
 #cmakedefine PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY                   @PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY@
+
+#if defined(PSA_WANT_KEY_TYPE_AES)
+/* Pass OBeron PSA core check config file */
+#define PSA_WANT_AES_KEY_SIZE_128
+#define PSA_WANT_AES_KEY_SIZE_192
+#define PSA_WANT_AES_KEY_SIZE_128
+#endif
 
 /*
  * Accelerated key types

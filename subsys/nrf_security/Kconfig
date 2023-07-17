@@ -58,8 +58,16 @@ config MBEDTLS_USER_CONFIG_FILE
 	default "nrf-config-user.h"
 	help
 	  Name of the file that will contain additional configurations for mbed TLS.
+	  This file is empty if PSA support is used. 
+	  This file is empty if legacy support is used.
+
+config MBEDTLS_PSA_CRYPTO_CONFIG_FILE
+	string "PSA configuration file"
+	default "nrf-config-psa.h"
+	help
+	  Name of the file that will contain additional configurations for PSA crypto.
 	  This file may be generated and will contain PSA configurations if PSA APIs
-	  are generated in the system. This file is empty if legacy support is used.
+	  are generated in the system. This file is not used if legacy support is used.
 
 config GENERATE_MBEDTLS_CFG_FILE
 	bool

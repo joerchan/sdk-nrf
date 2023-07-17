@@ -11,7 +11,9 @@
 #include <nrf_cc3xx_platform_identity_key.h>
 #include <hw_unique_key.h>
 #include <zephyr/sys/util.h>
+#if defined(CONFIG_IDENTITY_KEY_RANDOM)
 #include <psa/crypto.h>
+#endif
 
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
