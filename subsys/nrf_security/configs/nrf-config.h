@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef MBEDTLS_CONFIG_PSA_H
-#define MBEDTLS_CONFIG_PSA_H
+#ifndef NRF_CONFIG_H
+#define NRF_CONFIG_H
 
 #if defined(MBEDTLS_USER_CONFIG_FILE)
 #include MBEDTLS_USER_CONFIG_FILE
@@ -334,4 +334,4 @@ extern "C" {
 }
 #endif
 
-#endif /* MBEDTLS_CONFIG_PSA_H */
+#endif /* NRF_CONFIG_H */
