@@ -61,6 +61,10 @@ config MBEDTLS_USER_CONFIG_FILE
 	  This file may be generated and will contain PSA configurations if PSA APIs
 	  are generated in the system. This file is empty if legacy support is used.
 
+config MBEDTLS_PSA_CRYPTO_CONFIG_FILE
+	string "tull"
+	default "nrf-config-psa.h"
+
 config GENERATE_MBEDTLS_CFG_FILE
 	bool
 	prompt "Generate mbed TLS config files"
