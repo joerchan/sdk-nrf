@@ -22,6 +22,13 @@
 #else
 #error "MBEDTLS_PSA_CRYPTO_CONFIG_FILE expected to be set"
 #endif
+
+#if defined(MBEDTLS_PSA_CRYPTO_USER_CONFIG_FILE)
+#include MBEDTLS_PSA_CRYPTO_USER_CONFIG_FILE
+#else
+#error "MBEDTLS_PSA_CRYPTO_USER_CONFIG_FILE expected to be set"
+#endif
+
 #endif /* defined(MBEDTLS_PSA_CRYPTO_CONFIG) */
 
 #ifdef __cplusplus

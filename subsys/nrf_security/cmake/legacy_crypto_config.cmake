@@ -99,10 +99,10 @@ kconfig_check_and_set_base(MBEDTLS_DEBUG_C)
 kconfig_check_and_set_base(MBEDTLS_MEMORY_DEBUG)
 
 kconfig_check_and_set_base(MBEDTLS_PSA_CRYPTO_SPM)
-kconfig_check_and_set_base(MBEDTLS_USE_PSA_CRYPTO)
+# kconfig_check_and_set_base(MBEDTLS_USE_PSA_CRYPTO)
 
 kconfig_check_and_set_base(MBEDTLS_PSA_CRYPTO_C)
-kconfig_check_and_set_base(MBEDTLS_PSA_CRYPTO_CONFIG)
+# kconfig_check_and_set_base(MBEDTLS_PSA_CRYPTO_CONFIG)
 
 kconfig_check_and_set_base_to_one(MBEDTLS_PLATFORM_EXIT_ALT)
 kconfig_check_and_set_base_to_one(MBEDTLS_PLATFORM_FPRINTF_ALT)
@@ -294,5 +294,10 @@ if(CONFIG_GENERATE_MBEDTLS_CFG_FILE)
   # Copy an empty user-config to help with legacy build
   configure_file(${NRF_SECURITY_ROOT}/configs/nrf-config-user-empty.h
     ${generated_include_path}/${CONFIG_MBEDTLS_USER_CONFIG_FILE}
+  )
+
+  # Copy an empty user-config to help with legacy build
+  configure_file(${NRF_SECURITY_ROOT}/configs/nrf-config-user-empty.h
+    ${generated_include_path}/${CONFIG_MBEDTLS_PSA_CRYPTO_CONFIG_FILE}
   )
 endif()
