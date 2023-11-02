@@ -183,13 +183,19 @@ __attribute__((naked)) static void handle_fault_from_ns(
 
 void tfm_hal_system_reset(void)
 {
-	struct exception_info_t *exc_ctx = tfm_exception_info_get_context();
-	const uint8_t active_exception_number = (exc_ctx->xPSR & 0xff);
+	struct exception_info_t exc_ctx;
+	
+	tfm_exception_info_get_context(&exc_ctx);
+
+	const bool exc_ctx_valid = exc_ctx.EXC_RETURN != 0x0;
+	const uint8_t active_exception_number = (exc_ctx.xPSR & 0xff);
 	const bool securefault_active = (active_exception_number == SECUREFAULT_EXCEPTION_NUMBER);
 	const bool busfault_active = (active_exception_number == BUSFAULT_EXCEPTION_NUMBER);
+	const bool hardfault_active = (active_exception_number == HARDFAULT_EXCEPTION_NUMBER);
 
-	if ((exc_ctx == NULL) || is_return_secure_stack(exc_ctx->EXC_RETURN) ||
-		!(securefault_active || busfault_active)) {
+	if (!exc_ctx_valid ||
+	    is_return_secure_stack(exc_ctx.EXC_RETURN) ||
+	    !(securefault_active || busfault_active || hardfault_active)) {
 		NVIC_SystemReset();
 	}
 
@@ -211,7 +217,7 @@ void tfm_hal_system_reset(void)
 	hardfault_handler_fn &= ~0x1;
 
 	/* Adjust EXC_RETURN value to emulate NS exception entry */
-	uint32_t ns_exc_return = exc_ctx->EXC_RETURN & ~EXC_RETURN_EXC_SECURE;
+	uint32_t ns_exc_return = exc_ctx.EXC_RETURN & ~EXC_RETURN_EXC_SECURE;
 	/* Update SPSEL to reflect correct CONTROL_NS.SPSEL setting */
 	ns_exc_return &= ~(EXC_RETURN_SPSEL);
 	CONTROL_Type ctrl_ns;
