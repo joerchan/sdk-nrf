@@ -193,6 +193,8 @@ void tfm_hal_system_reset(void)
 	const bool busfault_active = (active_exception_number == BUSFAULT_EXCEPTION_NUMBER);
 	const bool hardfault_active = (active_exception_number == HARDFAULT_EXCEPTION_NUMBER);
 
+	SPMLOG_ERRMSGVAL("Active exception number", active_exception_number);
+
 	if (!exc_ctx_valid ||
 	    is_return_secure_stack(exc_ctx.EXC_RETURN) ||
 	    !(securefault_active || busfault_active || hardfault_active)) {
@@ -227,6 +229,8 @@ void tfm_hal_system_reset(void)
 	}
 
 	handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
+
+	while(true);
 
 	NVIC_SystemReset();
 }
