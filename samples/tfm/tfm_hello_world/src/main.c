@@ -175,9 +175,15 @@ int main(void)
 
 	printk("Finished\n");
 
+#if 1
 	spim_init(255, 255);
 	spim_send(0x20000000, 100);
+#endif
 
+#if 0
+	volatile uint32_t *null_ptr =(void *)0x0;
+	*null_ptr = 0xbadcafe;
+#endif
 	printk("Spim stuff\n");
 	return 0;
 }
