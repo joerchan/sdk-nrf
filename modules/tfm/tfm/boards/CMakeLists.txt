@@ -41,10 +41,10 @@ target_include_directories(platform_s
 target_sources(platform_s
   PRIVATE
   common/tfm_hal_platform.c
-  common/tfm_hal_reset_halt.c
   $<$<BOOL:${TFM_PARTITION_INITIAL_ATTESTATION}>:${CMAKE_CURRENT_SOURCE_DIR}/common/attest_hal.c>
   common/assert.c
   $<$<NOT:$<BOOL:${PLATFORM_DEFAULT_OTP}>>:${CMAKE_CURRENT_SOURCE_DIR}/common/dummy_otp.c>
+  $<$<NOT:$<BOOL:${PLATFORM_DEFAULT_SYSTEM_RESET_HALT}>>:${CMAKE_CURRENT_SOURCE_DIR}/common/tfm_hal_reset_halt.c>
   )
 
 target_link_libraries(platform_s
@@ -114,6 +114,10 @@ endif()
 
 if (NRF_ALLOW_NON_SECURE_RESET)
   target_compile_definitions(platform_s PUBLIC NRF_ALLOW_NON_SECURE_RESET)
+endif()
+
+if (NRF_ALLOW_NON_SECURE_FAULT_HANDLING)
+  target_compile_definitions(platform_s PUBLIC NRF_ALLOW_NEN_SECURE_FAULT_HANDLING)
 endif()
 
 if (CONFIG_NFCT_PINS_AS_GPIOS)

@@ -5,31 +5,11 @@
 #include "exception_info.h"
 #include "tfm_arch.h"
 
-// #if defined(CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING)
-void tfm_hal_system_halt(void)
-{
-	/*
-	 * Disable IRQs to stop all threads, not just the thread that
-	 * halted the system.
-	 */
-	__disable_irq();
-
-	/*
-	 * Enter sleep to reduce power consumption and do it in a loop in
-	 * case a signal wakes up the CPU.
-	 */
-	while (1) {
-		__WFE();
-	}
-}
-
 #define SECUREFAULT_EXCEPTION_NUMBER (NVIC_USER_IRQ_OFFSET + SecureFault_IRQn)
 #define HARDFAULT_EXCEPTION_NUMBER   (NVIC_USER_IRQ_OFFSET + HardFault_IRQn)
 #define BUSFAULT_EXCEPTION_NUMBER    (NVIC_USER_IRQ_OFFSET + BusFault_IRQn)
 
 #define SPUFAULT_EXCEPTION_NUMBER    (NVIC_USER_IRQ_OFFSET + SPU_IRQn)
-
-#if defined(TFM_EXCEPTION_INFO_DUMP) && defined(TRUSTZONE_PRESENT)
 
 __attribute__((naked)) static void handle_fault_from_ns(
 	uint32_t fault_handler_fn, uint32_t exc_return) {
@@ -122,7 +102,7 @@ __attribute__((naked)) static void handle_fault_from_ns(
  * The fault handler as a result will therefore not be able to provide any fault information.
  */
 
-void tfm_hal_system_reset(void)
+void nonsecure_fault_handling(void)
 {
 	struct exception_info_t exc_ctx;
 	
@@ -147,11 +127,11 @@ void tfm_hal_system_reset(void)
 
 	/*
 	 * If we get here, we are taking a fault handling path where a fault was generated
-	 * from the NS firmware running on the device. If we just reset, it will be
-	 * impossible to extract the root cause of the error on the NS side.
+	 * from the NSPE firmware running on the device. If we just handle it in SPE, it will be
+	 * impossible to extract the root cause of the error on the NSPE side.
 	 *
-	 * To allow for root cause analysis, let's call the NS HardFault handler.  Any error from
-	 * the NS fault handler will land us back in the Secure HardFault handler where we will not
+	 * To allow for root cause analysis, call the NSPE HardFault handler.  Any error from
+	 * the NSPE fault handler will land us back in the SPE HardFault handler where we will not
 	 * enter this path and simply reset the device.
 	 */
 
@@ -176,10 +156,33 @@ void tfm_hal_system_reset(void)
 
 	NVIC_SystemReset();
 }
-#else
+
+void tfm_hal_system_halt(void)
+{
+// #if CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING
+	nonsecure_fault_handling();
+// #endif
+
+	/*
+	 * Disable IRQs to stop all threads, not just the thread that
+	 * halted the system.
+	 */
+	__disable_irq();
+
+	/*
+	 * Enter sleep to reduce power consumption and do it in a loop in
+	 * case a signal wakes up the CPU.
+	 */
+	while (1) {
+		__WFE();
+	}
+}
+
 void tfm_hal_system_reset(void)
 {
+// #if CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING
+	nonsecure_fault_handling();
+// #endif
+
 	NVIC_SystemReset();
 }
-#endif /* defined(TRUSTZONE_PRESENT) && defined(TFM_EXCEPTION_INFO_DUMP) */
-// #endif /* CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING */
