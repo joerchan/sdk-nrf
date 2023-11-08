@@ -70,6 +70,58 @@ __attribute__((naked)) static void handle_fault_from_ns(
 	);
 }
 
+/* The goal of this feature is to allow the non-secure to handle the exceptions that are
+ * triggered by non-secure but the exception is targeting secure.
+ *
+ * Banked Exceptions:
+ * These exceptions have their individual pending bits and will target the security state
+ * that they are taken from.
+ *
+ * These exceptions are banked:
+ *  - HardFault
+ *  - MemManageFault
+ *  - UsageFault
+ *  - SVCall
+ *  - PendSV
+ *  - Systick
+ *
+ * These exceptions are not banked:
+ *  - Reset
+ *  - NMI
+ *  - BusFault
+ *  - SecureFault
+ *  - DebugMonitor
+ *  - External Interrupt
+ *
+ * AICR.PRIS bit:
+ * Prioritize Secure interrupts. All secure exceptions take priority over the non-secure
+ * TF-M enables this
+ *
+ * AICR.BFHFNMINS bit:
+ * Enable BusFault HardFault and NMI to target non-secure.
+ * Since HardFault is banked this wil target the security state it is taken from, the others
+ * will always target non-secure.
+ * The effect of enabling this and PRIS at the same time is UNDEFINED.
+ *
+ * External interrupts target security state based on NVIC target state configuration.
+ * The SPU interrupt has been configured to target secure state in target_cfg.c
+ *
+ * The zephyr interrupt handling for ARM uses a common fault handler for all types of
+ * Exceptions. This one also handles exceptions that have not been enabled or configured,
+ * and external interrupts that have not been enabled or configured.
+ * These are handled the same with just a difference in the message that is printed:
+ * "Reserved Exception" and "Spurious interrupt".
+ *
+ * The SPU fault handler is just an extension to of the BusFault or SecureFault handler
+ * that is triggered by events external to the CPU, such as an EasyDMA access.
+ * Handling this by the same handler as BusFault or SecureFault therefore shouldn't cause
+ * any problems.
+ *
+ * When triggering the fault handler in non-secure application the non-secure fault handler
+ * does not have access to the fault status registers.
+ * The fault handler as a result will therefore not be able to provide any fault information.
+ */
+
 void tfm_hal_system_reset(void)
 {
 	struct exception_info_t exc_ctx;
@@ -79,42 +131,6 @@ void tfm_hal_system_reset(void)
 	const bool exc_ctx_valid = exc_ctx.EXC_RETURN != 0x0;
 	const uint8_t active_exception_number = (exc_ctx.xPSR & 0xff);
 
-	/* The goal of this feature is to allow the non-secure to handle the exceptions that are
-         * triggered by non-secure but the exception is targeting secure.
-         *
-         * Banked Exceptions:
-         * These exceptions have their individual pending bits and will target the security state
-         * that they are taken from.
-         * 
-         * These exceptions are banked:
-         *  - HardFault
-         *  - MemManageFault
-         *  - UsageFault
-         *  - SVCall
-         *  - PendSV
-         *  - Systick
-         * 
-         * These exceptions are not banked:
-         *  - Reset
-         *  - NMI
-         *  - BusFault
-         *  - SecureFault
-         *  - DebugMonitor
-         *  - External Interrupt
-         * 
-         * AICR.PRIS bit:
-         * Prioritize Secure interrupts. All secure exceptions take priority over the non-secure
-         * TF-M enables this
-         * 
-         * AICR.BFHFNMINS:
-         * Enable BusFault HardFault and NMI to target non-secure.
-         * Since HardFault is banked this wil target the security state it is taken from, the others
-         * will always target non-secure.
-         * The effect of enabling this and PRIS at the same time is UNDEFINED. 
-         *
-         * External interrupts target security state based on NVIC target state configuration.
-	 *
-	 */
 	const bool securefault_active = (active_exception_number == SECUREFAULT_EXCEPTION_NUMBER);
 	const bool busfault_active = (active_exception_number == BUSFAULT_EXCEPTION_NUMBER);
 	const bool hardfault_active = (active_exception_number == HARDFAULT_EXCEPTION_NUMBER);
@@ -130,7 +146,7 @@ void tfm_hal_system_reset(void)
 	}
 
 	/*
-	 * If we get here, we are taking a reset path where a fault was generated
+	 * If we get here, we are taking a fault handling path where a fault was generated
 	 * from the NS firmware running on the device. If we just reset, it will be
 	 * impossible to extract the root cause of the error on the NS side.
 	 *
@@ -156,10 +172,7 @@ void tfm_hal_system_reset(void)
 		ns_exc_return |= EXC_RETURN_SPSEL;
 	}
 
-	// while(true);
 	handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
-
-	while(true);
 
 	NVIC_SystemReset();
 }
