@@ -117,7 +117,8 @@ if (NRF_ALLOW_NON_SECURE_RESET)
 endif()
 
 if (NRF_ALLOW_NON_SECURE_FAULT_HANDLING)
-  target_compile_definitions(platform_s PUBLIC NRF_ALLOW_NEN_SECURE_FAULT_HANDLING)
+  message(WARNING "TEST")
+  target_compile_definitions(platform_s PUBLIC NRF_ALLOW_NON_SECURE_FAULT_HANDLING)
 endif()
 
 if (CONFIG_NFCT_PINS_AS_GPIOS)

@@ -5,6 +5,8 @@
 #include "exception_info.h"
 #include "tfm_arch.h"
 
+#if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
+
 #define SECUREFAULT_EXCEPTION_NUMBER (NVIC_USER_IRQ_OFFSET + SecureFault_IRQn)
 #define HARDFAULT_EXCEPTION_NUMBER   (NVIC_USER_IRQ_OFFSET + HardFault_IRQn)
 #define BUSFAULT_EXCEPTION_NUMBER    (NVIC_USER_IRQ_OFFSET + BusFault_IRQn)
@@ -137,7 +139,7 @@ void nonsecure_fault_handling(void)
 
 	uint32_t *vtor = (uint32_t *)tfm_hal_get_ns_VTOR();
 
-	uint32_t hardfault_handler_fn = vtor[HARDFAULT_EXCEPTION_NUMBER];
+	uint32_t hardfault_handler_fn = vtor[SPUFAULT_EXCEPTION_NUMBER];
 
 	/* bit 0 needs to be cleared to transition to NS */
 	hardfault_handler_fn &= ~0x1;
@@ -154,14 +156,15 @@ void nonsecure_fault_handling(void)
 
 	handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
 
-	NVIC_SystemReset();
+	// NVIC_SystemReset();
 }
+#endif /* CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING */
 
 void tfm_hal_system_halt(void)
 {
-// #if CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING
+#if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
 	nonsecure_fault_handling();
-// #endif
+#endif
 
 	/*
 	 * Disable IRQs to stop all threads, not just the thread that
@@ -180,9 +183,9 @@ void tfm_hal_system_halt(void)
 
 void tfm_hal_system_reset(void)
 {
-// #if CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING
+#if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
 	nonsecure_fault_handling();
-// #endif
+#endif
 
 	NVIC_SystemReset();
 }
