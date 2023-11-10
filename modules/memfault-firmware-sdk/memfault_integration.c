@@ -25,6 +25,8 @@
 
 #include <zephyr/logging/log.h>
 
+#include <tfm_ioctl_api.h>
+
 LOG_MODULE_REGISTER(memfault_ncs, CONFIG_MEMFAULT_NCS_LOG_LEVEL);
 
 #define IMEI_LEN 15
@@ -120,6 +122,7 @@ static int device_info_init(void)
 }
 #endif /* CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI || defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC) */
 
+#if 0
 void __wrap_z_fatal_error(unsigned int reason, const z_arch_esf_t *esf) {
   // flush logs prior to capturing coredump & rebooting
   LOG_PANIC();
@@ -155,12 +158,12 @@ void __wrap_z_fatal_error(unsigned int reason, const z_arch_esf_t *esf) {
   __real_z_fatal_error(reason, esf);
 #endif
 }
+#endif
 
 
 static int init(void)
 {
 	int err = 0;
-
 
 	if (IS_ENABLED(CONFIG_MEMFAULT_NCS_PROVISION_CERTIFICATES)) {
 		err = memfault_zephyr_port_install_root_certs();

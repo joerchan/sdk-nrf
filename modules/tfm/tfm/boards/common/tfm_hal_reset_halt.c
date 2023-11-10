@@ -4,6 +4,7 @@
 #include "config_tfm.h"
 #include "exception_info.h"
 #include "tfm_arch.h"
+#include "tfm_ioctl_api.h"
 
 #if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
 
@@ -52,11 +53,70 @@ __attribute__((naked)) static void handle_fault_from_ns(
 	);
 }
 
-
 typedef void (*ns_funcptr) (void) __attribute__((cmse_nonsecure_call));
 
-void __attribute__((cmse_nonsecure_entry)) myEntryToSecureWorld(ns_funcptr callback){
-    callback();
+static struct tfm_ns_fault_service_handler_context  *ns_callback_context;
+static ns_funcptr ns_callback;
+
+void ns_fault_service_save_spu_events(void)
+{
+	if (ns_callback_context) {
+		ns_callback_context->status.spu_events = 0;
+
+		if(NRF_SPU->EVENTS_RAMACCERR) {
+			ns_callback_context->status.spu_events |=  TFM_SPU_EVENT_RAMACCERR;
+		}
+		if(NRF_SPU->EVENTS_PERIPHACCERR) {
+			ns_callback_context->status.spu_events |=  TFM_SPU_EVENT_PERIPHACCERR;
+		}
+		if(NRF_SPU->EVENTS_FLASHACCERR) {
+			ns_callback_context->status.spu_events |=  TFM_SPU_EVENT_FLASHACCERR;
+		}
+	}
+}
+
+int ns_fault_service_set_handler(struct tfm_ns_fault_service_handler_context  *context,
+					tfm_ns_fault_service_handler_callback callback)
+{
+	ns_callback_context = context;
+	ns_callback = (ns_funcptr)callback;
+
+	return 0;
+}
+
+void call_ns_callback(struct exception_info_t *exc_info)
+{
+	ns_callback_context->frame.r0 = exc_info->EXC_FRAME_COPY[0];
+	ns_callback_context->frame.r1 = exc_info->EXC_FRAME_COPY[1];
+	ns_callback_context->frame.r2 = exc_info->EXC_FRAME_COPY[2];
+	ns_callback_context->frame.r3 = exc_info->EXC_FRAME_COPY[3];
+	ns_callback_context->frame.r12 = exc_info->EXC_FRAME_COPY[4];
+	ns_callback_context->frame.lr = exc_info->EXC_FRAME_COPY[5];
+	ns_callback_context->frame.pc = exc_info->EXC_FRAME_COPY[6];
+	ns_callback_context->frame.xpsr = exc_info->EXC_FRAME_COPY[7];
+
+	/* TODO: make TF-M save callee-saved registers. */
+	memset(&ns_callback_context->registers, 0,sizeof(struct tfm_ns_fault_service_handler_context_registers));
+
+	ns_callback_context->status.cfsr = exc_info->CFSR;
+	ns_callback_context->status.hfsr = exc_info->HFSR;
+	ns_callback_context->status.sfsr = exc_info->SFSR;
+	ns_callback_context->status.bfar = exc_info->BFAR;
+	ns_callback_context->status.mmfar = exc_info->MMFAR;
+	ns_callback_context->status.sfar = exc_info->SFAR;
+
+	// ns_callback_context->status.msp = exc_info->MSP;
+	// ns_callback_context->status.psp = exc_info->PSP;
+	ns_callback_context->status.msp = __TZ_get_MSP_NS();
+	ns_callback_context->status.psp = __TZ_get_PSP_NS();
+
+	ns_callback_context->status.exc_return = exc_info->EXC_RETURN;
+
+
+	/* Already saved */
+	// ns_callback_context->status.spu_events;
+
+	ns_callback();
 }
 
 /* The goal of this feature is to allow the non-secure to handle the exceptions that are
@@ -111,7 +171,7 @@ void __attribute__((cmse_nonsecure_entry)) myEntryToSecureWorld(ns_funcptr callb
  * The fault handler as a result will therefore not be able to provide any fault information.
  */
 
-void nonsecure_fault_handling(void)
+void ns_fault_handling(void)
 {
 	struct exception_info_t exc_ctx;
 	
@@ -130,50 +190,19 @@ void nonsecure_fault_handling(void)
 	if (!exc_ctx_valid ||
 	    is_return_secure_stack(exc_ctx.EXC_RETURN) ||
 	    !(securefault_active || busfault_active || spufault_active)) {
-		while(true);
-		NVIC_SystemReset();
+		return;
 	}
 
-// volatile uint32_t *null_ptr =(void *)0x0;
-//        *null_ptr = 0xbadcafe;
-	/*
-	 * If we get here, we are taking a fault handling path where a fault was generated
-	 * from the NSPE firmware running on the device. If we just handle it in SPE, it will be
-	 * impossible to extract the root cause of the error on the NSPE side.
-	 *
-	 * To allow for root cause analysis, call the NSPE HardFault handler.  Any error from
-	 * the NSPE fault handler will land us back in the SPE HardFault handler where we will not
-	 * enter this path and simply reset the device.
-	 */
-
-	uint32_t *vtor = (uint32_t *)tfm_hal_get_ns_VTOR();
-
-	uint32_t hardfault_handler_fn = vtor[SPUFAULT_EXCEPTION_NUMBER];
-
-	/* bit 0 needs to be cleared to transition to NS */
-	hardfault_handler_fn &= ~0x1;
-
-	/* Adjust EXC_RETURN value to emulate NS exception entry */
-	uint32_t ns_exc_return = exc_ctx.EXC_RETURN & ~EXC_RETURN_ES;
-	/* Update SPSEL to reflect correct CONTROL_NS.SPSEL setting */
-	ns_exc_return &= ~(EXC_RETURN_SPSEL);
-	CONTROL_Type ctrl_ns;
-	ctrl_ns.w = __TZ_get_CONTROL_NS();
-	if (ctrl_ns.b.SPSEL) {
-		ns_exc_return |= EXC_RETURN_SPSEL;
+	if (ns_callback) {
+		call_ns_callback(&exc_ctx);
 	}
-
-	myEntryToSecureWorld(hardfault_handler_fn);
-	// handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
-
-	// NVIC_SystemReset();
 }
 #endif /* CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING */
 
 void tfm_hal_system_halt(void)
 {
 #if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
-	nonsecure_fault_handling();
+	ns_fault_handling();
 #endif
 
 	/*
@@ -194,7 +223,7 @@ void tfm_hal_system_halt(void)
 void tfm_hal_system_reset(void)
 {
 #if NRF_ALLOW_NON_SECURE_FAULT_HANDLING
-	nonsecure_fault_handling();
+	ns_fault_handling();
 #endif
 
 	NVIC_SystemReset();
