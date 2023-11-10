@@ -120,6 +120,43 @@ static int device_info_init(void)
 }
 #endif /* CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI || defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC) */
 
+void __wrap_z_fatal_error(unsigned int reason, const z_arch_esf_t *esf) {
+  // flush logs prior to capturing coredump & rebooting
+  LOG_PANIC();
+
+  const struct __extra_esf_info *extra_info = &esf->extra_info;
+  const _callee_saved_t *callee_regs = extra_info->callee;
+
+  // Read the "SPSEL" bit where
+  //  0 = Main Stack Pointer in use prior to exception
+  //  1 = Process Stack Pointer in use prior to exception
+  const uint32_t exc_return = extra_info->exc_return;
+  const bool msp_was_active = (exc_return & (1 << 2)) == 0;
+
+  sMfltRegState reg = {
+    .exception_frame = (void *)(msp_was_active ? extra_info->msp : callee_regs->psp),
+    .r4 = callee_regs->v1,
+    .r5 = callee_regs->v2,
+    .r6 = callee_regs->v3,
+    .r7 = callee_regs->v4,
+    .r8 = callee_regs->v5,
+    .r9 = callee_regs->v6,
+    .r10 = callee_regs->v7,
+    .r11 = callee_regs->v8,
+    .exc_return = exc_return,
+  };
+
+  memfault_fault_handler(&reg, kMfltRebootReason_HardFault);
+
+#if MEMFAULT_FAULT_HANDLER_RETURN
+  // instead of returning, call the Zephyr fatal error handler. This is done
+  // here instead of in memfault_platform_reboot(), because we need to pass the
+  // function parameters through
+  __real_z_fatal_error(reason, esf);
+#endif
+}
+
+
 static int init(void)
 {
 	int err = 0;

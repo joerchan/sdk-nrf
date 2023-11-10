@@ -52,6 +52,13 @@ __attribute__((naked)) static void handle_fault_from_ns(
 	);
 }
 
+
+typedef void (*ns_funcptr) (void) __attribute__((cmse_nonsecure_call));
+
+void __attribute__((cmse_nonsecure_entry)) myEntryToSecureWorld(ns_funcptr callback){
+    callback();
+}
+
 /* The goal of this feature is to allow the non-secure to handle the exceptions that are
  * triggered by non-secure but the exception is targeting secure.
  *
@@ -127,6 +134,8 @@ void nonsecure_fault_handling(void)
 		NVIC_SystemReset();
 	}
 
+// volatile uint32_t *null_ptr =(void *)0x0;
+//        *null_ptr = 0xbadcafe;
 	/*
 	 * If we get here, we are taking a fault handling path where a fault was generated
 	 * from the NSPE firmware running on the device. If we just handle it in SPE, it will be
@@ -154,7 +163,8 @@ void nonsecure_fault_handling(void)
 		ns_exc_return |= EXC_RETURN_SPSEL;
 	}
 
-	handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
+	myEntryToSecureWorld(hardfault_handler_fn);
+	// handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
 
 	// NVIC_SystemReset();
 }
