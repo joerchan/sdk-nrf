@@ -1320,8 +1320,9 @@ int parse_wireless_interface_info(char *info)
 {
 	char *token = NULL;
 	char *delimit = ",";
+	char *save_token;
 
-	token = strtok(info, delimit);
+	token = strtok_r(info, delimit, &save_token);
 
 	while (token != NULL) {
 		if (strncmp(token, "2:", 2) == 0) {
@@ -1333,7 +1334,7 @@ int parse_wireless_interface_info(char *info)
 		} else {
 			return -1;
 		}
-		token = strtok(NULL, delimit);
+		token = strtok_r(NULL, delimit, &save_token);
 	}
 
 	return 0;

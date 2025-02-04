@@ -384,7 +384,7 @@ static int generate_auth_path(char *buffer, size_t len)
 {
 	int ret;
 	char mver[CONFIG_MODEM_INFO_BUFFER_SIZE];
-	char *mvernmb;
+	char *mvernmb, *save_mvernmb;
 	int cnt;
 
 	if (!buffer) {
@@ -400,12 +400,12 @@ static int generate_auth_path(char *buffer, size_t len)
 		return ret ? ret : -ENODATA;
 	}
 
-	mvernmb = strtok(mver, "_-");
+	mvernmb = strtok_r(mver, "_-", &save_mvernmb);
 	cnt = 1;
 
 	/* mfw_nrf9160_1.3.2-FOTA-TEST - for example */
 	while (cnt++ < 3) {
-		mvernmb = strtok(NULL, "_-");
+		mvernmb = strtok_r(NULL, "_-", &save_mvernmb);
 	}
 
 	if (len < (sizeof(AUTH_API_TEMPLATE) + strlen(mvernmb) + strlen(CLIENT_VERSION))) {

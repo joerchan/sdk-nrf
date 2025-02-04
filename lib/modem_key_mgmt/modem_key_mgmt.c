@@ -17,6 +17,11 @@
 
 LOG_MODULE_REGISTER(modem_key_mgmt, CONFIG_MODEM_KEY_MGMT_LOG_LEVEL);
 
+/* Even though it's defined in minimal libc, the declaration of strtok_r appears to be missing in
+ * some cases, so we forward declare it here.
+ */
+extern char *strtok_r(char *, const char *, char **);
+
 /* Protect the shared scratch_buf with a mutex. */
 static K_MUTEX_DEFINE(key_mgmt_mutex);
 static char scratch_buf[4096];
@@ -354,7 +359,7 @@ int modem_key_mgmt_clear(nrf_sec_tag_t sec_tag)
 {
 	int err;
 	bool cmee_was_enabled;
-	char *token;
+	char *token, *save_token;
 	uint32_t tag, type;
 
 	cmee_enable(&cmee_was_enabled);
@@ -371,14 +376,14 @@ int modem_key_mgmt_clear(nrf_sec_tag_t sec_tag)
 		goto out;
 	}
 
-	token = strtok(scratch_buf, "\n");
+	token = strtok_r(scratch_buf, "\n", &save_token);
 
 	while (token != NULL) {
 		err = sscanf(token, "%%CMNG: %u,%u,\"", &tag, &type);
 		if (tag == sec_tag && err == 2) {
 			err = nrf_modem_at_printf("AT%%CMNG=3,%u,%u", sec_tag, type);
 		}
-		token = strtok(NULL, "\n");
+		token = strtok_r(NULL, "\n", &save_token);
 	}
 
 out:
@@ -432,7 +437,7 @@ out:
 int modem_key_mgmt_list(modem_key_mgmt_list_cb_t list_cb)
 {
 	int err;
-	char *token;
+	char *token, *save_token;
 	uint32_t tag, type;
 	bool cmee_was_enabled;
 
@@ -453,7 +458,7 @@ int modem_key_mgmt_list(modem_key_mgmt_list_cb_t list_cb)
 		goto out;
 	}
 
-	token = strtok(scratch_buf, "\n");
+	token = strtok_r(scratch_buf, "\n", &save_token);
 	while (token != NULL) {
 		int match = sscanf(token, "%%CMNG: %u,%u,\"", &tag, &type);
 
@@ -461,7 +466,7 @@ int modem_key_mgmt_list(modem_key_mgmt_list_cb_t list_cb)
 			list_cb(tag, type);
 		}
 
-		token = strtok(NULL, "\n");
+		token = strtok_r(NULL, "\n", &save_token);
 	}
 
 out:
